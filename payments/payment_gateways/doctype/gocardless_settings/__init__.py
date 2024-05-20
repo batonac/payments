@@ -69,7 +69,7 @@ def set_payment_request_status(event):
 		doc.db_set("status", "Failed")
 		try: # failed reason is a field in ERPNext version 16+, so it may not exist in the database
 			doc.db_set("failed_reason", event["details"]["description"])
-		except:
+		except KeyError:
 			pass
 
 
