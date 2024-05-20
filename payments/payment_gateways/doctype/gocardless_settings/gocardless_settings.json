@@ -10,6 +10,7 @@
   "section_break_2",
   "access_token",
   "webhooks_secret",
+  "fees_account",
   "use_sandbox",
   "header_img"
  ],
@@ -48,10 +49,16 @@
    "fieldname": "header_img",
    "fieldtype": "Attach Image",
    "label": "Header Image"
+  },
+  {
+   "fieldname": "fees_account",
+   "fieldtype": "Link",
+   "label": "Fees Account",
+   "options": "Account"
   }
  ],
  "links": [],
- "modified": "2024-05-14 16:18:26.154479",
+ "modified": "2024-05-20 15:18:37.775284",
  "modified_by": "Administrator",
  "module": "Payment Gateways",
  "name": "GoCardless Settings",
