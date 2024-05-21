@@ -24,7 +24,7 @@ def webhooks():
 		set_status(event)
 
 	# debug
-	frappe.log_error("GoCardless Webhooks", str(gocardless_events))
+	frappe.log_error("GoCardless Webhook", str(gocardless_events))
 
 	return 200
 
@@ -66,8 +66,14 @@ def set_mandate_status(event):
 
 def set_payment_request_status(event):
 	event_action = event.get("action")
+	event_description = event.get("details", {}).get("description")
 	payment_request = event.get("resource_metadata", {}).get("reference_document")
+	if not payment_request:
+		return
 	doc = frappe.get_doc("Payment Request", payment_request)
+	doc.add_comment('Comment', text=event_description, comment_by="GoCardless")
+	if event_action == "submitted" and doc.status != "Initiated":
+		doc.db_set("status", "Initiated")
 	if event_action == "confirmed" and doc.status != "Paid":
 		doc.set_as_paid()
 	if event_action == "cancelled" and doc.status != "Cancelled":
