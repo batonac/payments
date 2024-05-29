@@ -101,26 +101,26 @@ def create_payout_journal(event):
         # Get the internal deposit and fees accounts
         client = gc_settings.initialize_client()
         payout = client.payouts.get(payout_id)
-        gc_bank_account = payout.get("links").get("creditor_bank_account")
+        gc_bank_account = payout.links.creditor_bank_account
         account_number_ending = client.creditor_bank_accounts.get(gc_bank_account).attributes.get("account_number_ending")
         bank_account = frappe.get_last_doc("Bank Account", filters={"bank_account_no": ["like", "%" + account_number_ending]})
         deposit_account = bank_account.account
         fees_account = gc_settings.fees_account
         
         # Convert amounts to float
-        amount = float(payout.get("amount", 0)) / 100
-        deducted_fees = float(payout.get("deducted_fees", 0)) / 100
+        amount = float(payout.amount) / 100
+        deducted_fees = float(payout.deducted_fees) / 100
 
 		# Parse the 'created_at' value and extract the date
-        created_at_date = parser.parse(payout.get("created_at")).date()
+        created_at_date = parser.parse(payout.created_at).date()
         
         # Create the journal entry
         journal_entry = frappe.get_doc({
             "doctype": "Journal Entry",
             "voucher_type": "Journal Entry",
-            "posting_date": payout.get("arrival_date"),
+            "posting_date": payout.arrival_date,
             "cheque_date": created_at_date,
-            "cheque_no": payout.get("reference"),
+            "cheque_no": payout.reference,
             "accounts": [
                 {
                     "account": deposit_account,
