@@ -86,8 +86,6 @@ def set_payment_request_status(event):
 			pass
 
 
-import frappe
-
 def create_payout_journal(event):
     try:
         # Extract relevant data from the event
