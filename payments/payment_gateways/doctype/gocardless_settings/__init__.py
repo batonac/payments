@@ -69,8 +69,10 @@ def set_payment_request_status(event):
 	event_description = event.get("details", {}).get("description")
 	payment_id = event.get("links", {}).get("payment")
 	comment = ""
+	if event_action:
+		comment += f"<strong>GoCardless Event: <em>{event_action.capitalize()}<em></strong>"
 	if event_description:
-		comment += f"<strong>GoCardless Event: <em>{event_description}<em></strong>"
+		comment += f"<br>{event_description}"
 	if payment_id:
 		comment += f"<br><a href='https://gocardless.com/payments/{payment_id}'>View Payment</a>"
 	payment_request = event.get("resource_metadata", {}).get("reference_document")
