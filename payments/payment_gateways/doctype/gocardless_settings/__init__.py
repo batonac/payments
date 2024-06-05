@@ -67,11 +67,18 @@ def set_mandate_status(event):
 def set_payment_request_status(event):
 	event_action = event.get("action")
 	event_description = event.get("details", {}).get("description")
+	payment_id = event.get("links", {}).get("payment")
+	comment = ""
+	if event_description:
+		comment += f"<strong>GoCardless Event: <em>{event_description}<em></strong>"
+	if payment_id:
+		comment += f"<br><a href='https://gocardless.com/payments/{payment_id}'>View Payment</a>"
 	payment_request = event.get("resource_metadata", {}).get("reference_document")
 	if not payment_request:
 		return
 	doc = frappe.get_doc("Payment Request", payment_request)
-	doc.add_comment('Comment', text=event_description, comment_by="GoCardless")
+	if comment:
+		doc.add_comment('Info', text=comment, comment_by="GoCardless")
 	if event_action == "submitted" and doc.status != "Initiated":
 		doc.db_set("status", "Initiated")
 	if event_action == "confirmed" and doc.status != "Paid":
