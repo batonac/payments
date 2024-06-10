@@ -68,19 +68,20 @@ def set_payment_request_status(event):
 	event_action = event.get("action")
 	event_description = event.get("details", {}).get("description")
 	payment_id = event.get("links", {}).get("payment")
+	comment_email = "help@gocardless.com"
 	comment = ""
 	if event_action:
 		comment += f"<strong>GoCardless Event: <em>{event_action.capitalize()}<em></strong>"
 	if event_description:
 		comment += f"<br>{event_description}"
 	if payment_id:
-		comment += f"<br><a href='https://gocardless.com/payments/{payment_id}'>View Payment</a>"
+		comment += f"<br><a href='https://manage.gocardless.com/payments/{payment_id}'>View Payment</a>"
 	payment_request = event.get("resource_metadata", {}).get("reference_document")
 	if not payment_request:
 		return
 	doc = frappe.get_doc("Payment Request", payment_request)
 	if comment:
-		doc.add_comment('Info', text=comment, comment_by="GoCardless")
+		doc.add_comment('Info', text=comment, comment_by="GoCardless", comment_email=comment_email)
 	if event_action == "submitted" and doc.status != "Initiated":
 		doc.db_set("status", "Initiated")
 	if event_action == "confirmed" and doc.status != "Paid":
