@@ -153,7 +153,7 @@ def create_payout_journal(event):
                 }
             ]
         })
-        journal_entry.insert()
+        journal_entry.insert(ignore_permissions=True)
         journal_entry.submit()
     except Exception as e:
         # Log any exceptions that occur
