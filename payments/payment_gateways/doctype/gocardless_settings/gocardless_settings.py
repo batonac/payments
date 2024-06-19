@@ -107,6 +107,7 @@ class GoCardlessSettings(Document):
 
 		try:
 			self.integration_request = create_request_log(self.data, "Host", "GoCardless")
+			data.add_comment("Info", text=_(f"Payment Requested via GoCardless. See the <a href=\"{self.integration_request.get_url()}\">payment request</a> for more details."))
 			return self.create_charge_on_gocardless()
 
 		except Exception:
