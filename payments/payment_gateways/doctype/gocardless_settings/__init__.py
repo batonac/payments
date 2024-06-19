@@ -140,8 +140,8 @@ def create_payout_journal(event):
                 {
                     "account": fees_account,
                     "debit_in_account_currency": 0,
-                    "debit": 0,
-                    "credit": deducted_fees,
+                    "debit": deducted_fees,
+                    "credit": 0,
                     "credit_in_account_currency": deducted_fees
                 },
                 {

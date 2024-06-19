@@ -58,7 +58,7 @@ class GoCardlessSettings(Document):
 		valid_mandate, next_possible_charge_date = self.check_mandate_validity(data)
 		if valid_mandate is not None:
 			data.update(valid_mandate)
-			data["charge_date"] = max(data.get("charge_date"), frappe.utils.getdate(next_possible_charge_date))
+			data["charge_date"] = str(max(data.get("charge_date"), frappe.utils.getdate(next_possible_charge_date)))
 			self.create_payment_request(data)
 			return False
 		else:
@@ -107,7 +107,8 @@ class GoCardlessSettings(Document):
 
 		try:
 			self.integration_request = create_request_log(self.data, "Host", "GoCardless")
-			frappe.get_doc("Comment", {
+			frappe.get_doc({
+    			'doctype': 'Comment',
 				"reference_doctype": self.data.reference_doctype,
 				"reference_name": self.data.reference_docname,
 				"comment_type": "Info",
