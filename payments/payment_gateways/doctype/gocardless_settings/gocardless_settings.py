@@ -52,13 +52,13 @@ class GoCardlessSettings(Document):
 			"payer_name": customer_data.customer_name,
 			"order_id": data.name,
 			"currency": data.currency,
-			"charge_date": data.transaction_date or frappe.utils.nowdate(),
+			"charge_date": data.transaction_date or frappe.utils.getdate(),
 		}
 
 		valid_mandate, next_possible_charge_date = self.check_mandate_validity(data)
 		if valid_mandate is not None:
 			data.update(valid_mandate)
-			data["charge_date"] = max(data.get("charge_date"), next_possible_charge_date)
+			data["charge_date"] = max(data.get("charge_date"), frappe.utils.getdate(next_possible_charge_date))
 			self.create_payment_request(data)
 			return False
 		else:
@@ -102,16 +102,21 @@ class GoCardlessSettings(Document):
 	def get_payment_url(self, **kwargs):
 		return get_url(f"gocardless_checkout?{urlencode(kwargs)}")
 
-	def create_payment_request(self, data):
+	def create_payment_request(self, data):  
 		self.data = frappe._dict(data)
 
 		try:
 			self.integration_request = create_request_log(self.data, "Host", "GoCardless")
-			data.add_comment("Info", text=_(f"Payment Requested via GoCardless. See the <a href=\"{self.integration_request.get_url()}\">payment request</a> for more details."))
+			frappe.get_doc("Comment", {
+				"reference_doctype": self.data.reference_doctype,
+				"reference_name": self.data.reference_docname,
+				"comment_type": "Info",
+				"content": f"Payment Requested via GoCardless. See the <a href=\"{self.integration_request.get_url()}\">payment request</a> for more details."
+			}).insert()
 			return self.create_charge_on_gocardless()
 
 		except Exception:
-			frappe.log_error("Gocardless payment reqeust failed")
+			frappe.log_error("Gocardless payment request failed")
 			return {
 				"redirect_to": frappe.redirect_to_message(
 					_("Server Error"),
