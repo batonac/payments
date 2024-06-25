@@ -113,7 +113,7 @@ class GoCardlessSettings(Document):
 				"reference_name": self.data.reference_docname,
 				"comment_type": "Info",
 				"content": f"Payment Requested via GoCardless. See the <a href=\"{self.integration_request.get_url()}\">payment request</a> for more details."
-			}).insert()
+			}).insert(ignore_permissions=True)
 			return self.create_charge_on_gocardless()
 
 		except Exception:
