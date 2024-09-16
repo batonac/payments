@@ -18,7 +18,7 @@ from payments.utils import erpnext_app_import_guard
 
 
 class MpesaSettings(Document):
-	supported_currencies = ["KES"]
+	supported_currencies = ("KES",)
 
 	def validate_transaction_currency(self, currency):
 		if currency not in self.supported_currencies:
@@ -51,7 +51,7 @@ class MpesaSettings(Document):
 		args = frappe._dict(kwargs)
 		request_amounts = self.split_request_amount_according_to_transaction_limit(args)
 
-		for i, amount in enumerate(request_amounts):
+		for _i, amount in enumerate(request_amounts):
 			args.request_amount = amount
 			if frappe.flags.in_test:
 				from payments.payment_gateways.doctype.mpesa_settings.test_mpesa_settings import (
@@ -197,7 +197,7 @@ def verify_transaction(**kwargs):
 				)
 
 				total_paid = amount + sum(completed_payments)
-				mpesa_receipts = ", ".join(mpesa_receipts + [mpesa_receipt])
+				mpesa_receipts = ", ".join([*mpesa_receipts, mpesa_receipt])
 
 				if total_paid >= pr.grand_total:
 					pr.run_method("on_payment_authorized", "Completed")

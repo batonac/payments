@@ -79,7 +79,7 @@ from payments.utils import create_payment_gateway
 
 
 class RazorpaySettings(Document):
-	supported_currencies = ["INR"]
+	supported_currencies = ("INR",)
 
 	def init_client(self):
 		if self.api_key:
@@ -251,8 +251,8 @@ class RazorpaySettings(Document):
 
 	def authorize_payment(self):
 		"""
-		An authorization is performed when user’s payment details are successfully authenticated by the bank.
-		The money is deducted from the customer’s account, but will not be transferred to the merchant’s account
+		An authorization is performed when user's payment details are successfully authenticated by the bank.
+		The money is deducted from the customer's account, but will not be transferred to the merchant's account
 		until it is explicitly captured by merchant.
 		"""
 		data = json.loads(self.integration_request.data)
@@ -341,7 +341,7 @@ class RazorpaySettings(Document):
 		settings = self.get_settings({})
 
 		try:
-			resp = make_post_request(
+			make_post_request(
 				f"https://api.razorpay.com/v1/subscriptions/{subscription_id}/cancel",
 				auth=(settings.api_key, settings.api_secret),
 			)

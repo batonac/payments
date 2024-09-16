@@ -79,7 +79,7 @@ api_path = "/api/method/payments.payment_gateways.doctype.paypal_settings.paypal
 
 
 class PayPalSettings(Document):
-	supported_currencies = [
+	supported_currencies = (
 		"AUD",
 		"BRL",
 		"CAD",
@@ -105,7 +105,7 @@ class PayPalSettings(Document):
 		"THB",
 		"TRY",
 		"USD",
-	]
+	)
 
 	def __setup__(self):
 		self.use_sandbox = 0

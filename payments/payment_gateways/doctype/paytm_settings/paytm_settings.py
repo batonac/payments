@@ -24,7 +24,7 @@ from payments.utils import create_payment_gateway
 
 
 class PaytmSettings(Document):
-	supported_currencies = ["INR"]
+	supported_currencies = ("INR",)
 
 	def validate(self):
 		create_payment_gateway("Paytm")

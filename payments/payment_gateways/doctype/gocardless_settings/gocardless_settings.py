@@ -13,7 +13,7 @@ from frappe.utils import call_hook_method, cint, flt, get_url
 
 
 class GoCardlessSettings(Document):
-	supported_currencies = ["EUR", "DKK", "GBP", "SEK", "AUD", "NZD", "CAD", "USD"]
+	supported_currencies = ("EUR", "DKK", "GBP", "SEK", "AUD", "NZD", "CAD", "USD")
 
 	def validate(self):
 		self.initialize_client()
