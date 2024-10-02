@@ -306,8 +306,8 @@ class RazorpaySettings(Document):
 				if custom_redirect_to:
 					redirect_to = custom_redirect_to
 
-			redirect_url = "payment-success?doctype={}&docname={}".format(
-				self.data.reference_doctype, self.data.reference_docname
+			redirect_url = (
+				f"payment-success?doctype={self.data.reference_doctype}&docname={self.data.reference_docname}"
 			)
 		else:
 			redirect_url = "payment-failed"
@@ -393,7 +393,9 @@ def capture_payment(is_sandbox=False, sanbox_response=None):
 
 				if resp.get("status") == "authorized":
 					resp = make_post_request(
-						"https://api.razorpay.com/v1/payments/{}/capture".format(data.get("razorpay_payment_id")),
+						"https://api.razorpay.com/v1/payments/{}/capture".format(
+							data.get("razorpay_payment_id")
+						),
 						auth=(settings.api_key, settings.api_secret),
 						data={"amount": data.get("amount")},
 					)

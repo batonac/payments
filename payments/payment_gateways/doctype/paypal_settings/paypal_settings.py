@@ -108,11 +108,11 @@ class PayPalSettings(Document):
 	]
 
 	def __setup__(self):
-		setattr(self, "use_sandbox", 0)
+		self.use_sandbox = 0
 
 	def setup_sandbox_env(self, token):
 		data = json.loads(frappe.db.get_value("Integration Request", token, "data"))
-		setattr(self, "use_sandbox", cint(frappe._dict(data).use_sandbox) or 0)
+		self.use_sandbox = cint(frappe._dict(data).use_sandbox) or 0
 
 	def validate(self):
 		create_payment_gateway("PayPal")
@@ -171,7 +171,7 @@ class PayPalSettings(Document):
 			frappe.throw(_("Invalid payment gateway credentials"))
 
 	def get_payment_url(self, **kwargs):
-		setattr(self, "use_sandbox", cint(kwargs.get("use_sandbox", 0)))
+		self.use_sandbox = cint(kwargs.get("use_sandbox", 0))
 
 		response = self.execute_set_express_checkout(**kwargs)
 

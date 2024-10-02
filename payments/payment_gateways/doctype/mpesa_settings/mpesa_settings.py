@@ -104,8 +104,8 @@ class MpesaSettings(Document):
 	def handle_api_response(self, global_id, request_dict, response):
 		"""Response received from API calls returns a global identifier for each transaction, this code is returned during the callback."""
 		# check error response
-		if getattr(response, "requestId"):
-			req_name = getattr(response, "requestId")
+		if response.requestId:
+			req_name = response.requestId
 			error = response
 		else:
 			# global checkout id used as request name
@@ -116,7 +116,7 @@ class MpesaSettings(Document):
 			create_request_log(request_dict, "Host", "Mpesa", req_name, error)
 
 		if error:
-			frappe.throw(_(getattr(response, "errorMessage")), title=_("Transaction Error"))
+			frappe.throw(_(response.errorMessage), title=_("Transaction Error"))
 
 
 def generate_stk_push(**kwargs):
@@ -318,9 +318,7 @@ def process_balance_info(**kwargs):
 			)
 		except Exception:
 			request.handle_failure(account_balance_response)
-			frappe.log_error(
-				title="Mpesa Account Balance Processing Error", message=account_balance_response
-			)
+			frappe.log_error(title="Mpesa Account Balance Processing Error", message=account_balance_response)
 	else:
 		request.handle_failure(account_balance_response)
 

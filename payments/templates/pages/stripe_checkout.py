@@ -72,9 +72,7 @@ def get_header_image(doc, gateway_controller):
 
 
 @frappe.whitelist(allow_guest=True)
-def make_payment(
-	stripe_token_id, data, reference_doctype=None, reference_docname=None, payment_gateway=None
-):
+def make_payment(stripe_token_id, data, reference_doctype=None, reference_docname=None, payment_gateway=None):
 	data = json.loads(data)
 
 	data.update({"stripe_token_id": stripe_token_id})

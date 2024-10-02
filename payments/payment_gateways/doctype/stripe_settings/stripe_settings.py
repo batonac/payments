@@ -256,9 +256,7 @@ class StripeSettings(Document):
 				if custom_redirect_to:
 					redirect_to = custom_redirect_to
 
-				redirect_url = "payment-success?doctype={}&docname={}".format(
-					self.data.reference_doctype, self.data.reference_docname
-				)
+				redirect_url = f"payment-success?doctype={self.data.reference_doctype}&docname={self.data.reference_docname}"
 
 			if self.redirect_url:
 				redirect_url = self.redirect_url
