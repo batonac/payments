@@ -71,6 +71,7 @@ frappe.require("https://checkout.razorpay.com/v1/checkout.js").then(() => {
     }
 
     show() {
+      // eslint-disable-next-line no-undef
       this.razorpay = new Razorpay(this.options);
       this.razorpay.once("ready", (response) => {
         this.on_open && this.on_open(response);
