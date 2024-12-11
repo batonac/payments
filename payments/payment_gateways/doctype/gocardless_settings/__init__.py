@@ -81,7 +81,7 @@ def set_payment_request_status(event):
 		return
 	doc = frappe.get_doc("Payment Request", payment_request)
 	if comment:
-		doc.add_comment('Info', text=comment, comment_by="GoCardless", comment_email=comment_email)
+		doc.add_comment("Info", text=comment, comment_by="GoCardless", comment_email=comment_email)
 	if event_action == "submitted" and doc.status != "Initiated":
 		doc.db_set("status", "Initiated")
 	if event_action == "confirmed" and doc.status != "Paid":
@@ -90,74 +90,86 @@ def set_payment_request_status(event):
 		doc.set_as_cancelled()
 	if event_action == "failed" and doc.status != "Failed":
 		doc.db_set("status", "Failed")
-		try: # failed reason is a field in ERPNext version 16+, so it may not exist in the database
+		try:  # failed reason is a field in ERPNext version 16+, so it may not exist in the database
 			doc.db_set("failed_reason", event["details"]["description"])
 		except KeyError:
 			pass
 
 
 def create_payout_journal(event):
-    try:
-        # Extract relevant data from the event
-        payout_id = event.get("links").get("payout")
-        
-        # Get the internal payment account
-        gc_settings = frappe.get_last_doc("GoCardless Settings", filters={"use_sandbox": 0})
-        payment_gateway = frappe.get_value("Payment Gateway", filters={"gateway_controller": gc_settings.name}, fieldname="name")
-        payment_account = frappe.get_value("Payment Gateway Account", filters={"payment_gateway": payment_gateway}, fieldname="payment_account")
-        
-        # Get the internal deposit and fees accounts
-        client = gc_settings.initialize_client()
-        payout = client.payouts.get(payout_id)
-        gc_bank_account = payout.links.creditor_bank_account
-        account_number_ending = client.creditor_bank_accounts.get(gc_bank_account).attributes.get("account_number_ending")
-        bank_account = frappe.get_last_doc("Bank Account", filters={"bank_account_no": ["like", "%" + account_number_ending]})
-        deposit_account = bank_account.account
-        fees_account = gc_settings.fees_account
-        
-        # Convert amounts to float
-        amount = float(payout.amount) / 100
-        deducted_fees = float(payout.deducted_fees) / 100
+	try:
+		# Extract relevant data from the event
+		payout_id = event.get("links").get("payout")
+
+		# Get the internal payment account
+		gc_settings = frappe.get_last_doc("GoCardless Settings", filters={"use_sandbox": 0})
+		payment_gateway = frappe.get_value(
+			"Payment Gateway", filters={"gateway_controller": gc_settings.name}, fieldname="name"
+		)
+		payment_account = frappe.get_value(
+			"Payment Gateway Account",
+			filters={"payment_gateway": payment_gateway},
+			fieldname="payment_account",
+		)
+
+		# Get the internal deposit and fees accounts
+		client = gc_settings.initialize_client()
+		payout = client.payouts.get(payout_id)
+		gc_bank_account = payout.links.creditor_bank_account
+		account_number_ending = client.creditor_bank_accounts.get(gc_bank_account).attributes.get(
+			"account_number_ending"
+		)
+		bank_account = frappe.get_last_doc(
+			"Bank Account", filters={"bank_account_no": ["like", "%" + account_number_ending]}
+		)
+		deposit_account = bank_account.account
+		fees_account = gc_settings.fees_account
+
+		# Convert amounts to float
+		amount = float(payout.amount) / 100
+		deducted_fees = float(payout.deducted_fees) / 100
 
 		# Parse the 'created_at' value and extract the date
-        created_at_date = parser.parse(payout.created_at).date()
-        
-        # Create the journal entry
-        journal_entry = frappe.get_doc({
-            "doctype": "Journal Entry",
-            "voucher_type": "Journal Entry",
-            "posting_date": payout.arrival_date,
-            "cheque_date": created_at_date,
-            "cheque_no": payout.reference,
-            "accounts": [
-                {
-                    "account": deposit_account,
-                    "debit_in_account_currency": amount,
-                    "debit": amount,
-                    "credit": 0,
-                    "credit_in_account_currency": 0
-                },
-                {
-                    "account": fees_account,
-                    "debit_in_account_currency": deducted_fees,
-                    "debit": deducted_fees,
-                    "credit": 0,
-                    "credit_in_account_currency": 0
-                },
-                {
-                    "account": payment_account,
-                    "debit_in_account_currency": 0,
-                    "debit": 0,
-                    "credit": amount + deducted_fees,
-                    "credit_in_account_currency": amount + deducted_fees
-                }
-            ]
-        })
-        journal_entry.insert(ignore_permissions=True)
-        journal_entry.submit()
-    except Exception as e:
-        # Log any exceptions that occur
-        frappe.log_error("GoCardless Payout Journal Creation Error", str(e))
+		created_at_date = parser.parse(payout.created_at).date()
+
+		# Create the journal entry
+		journal_entry = frappe.get_doc(
+			{
+				"doctype": "Journal Entry",
+				"voucher_type": "Journal Entry",
+				"posting_date": payout.arrival_date,
+				"cheque_date": created_at_date,
+				"cheque_no": payout.reference,
+				"accounts": [
+					{
+						"account": deposit_account,
+						"debit_in_account_currency": amount,
+						"debit": amount,
+						"credit": 0,
+						"credit_in_account_currency": 0,
+					},
+					{
+						"account": fees_account,
+						"debit_in_account_currency": deducted_fees,
+						"debit": deducted_fees,
+						"credit": 0,
+						"credit_in_account_currency": 0,
+					},
+					{
+						"account": payment_account,
+						"debit_in_account_currency": 0,
+						"debit": 0,
+						"credit": amount + deducted_fees,
+						"credit_in_account_currency": amount + deducted_fees,
+					},
+				],
+			}
+		)
+		journal_entry.insert(ignore_permissions=True)
+		journal_entry.submit()
+	except Exception as e:
+		# Log any exceptions that occur
+		frappe.log_error("GoCardless Payout Journal Creation Error", str(e))
 
 
 def authenticate_signature(r):
