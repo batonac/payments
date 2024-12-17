@@ -24,7 +24,7 @@ def webhooks():
 		set_status(event)
 
 	# debug
-	frappe.log_error("GoCardless Webhook", str(gocardless_events))
+	# frappe.log_error("GoCardless Webhook", str(gocardless_events))
 
 	return 200
 
@@ -97,10 +97,12 @@ def set_payment_request_status(event):
 
 
 def create_payout_journal(event):
+	# Extract relevant data from the event
+	payout_id = event.get("links").get("payout")
+	payout = client.payouts.get(payout_id)
+	if frappe.db.exists("Journal Entry", {"cheque_no": payout.reference}):
+		return
 	try:
-		# Extract relevant data from the event
-		payout_id = event.get("links").get("payout")
-
 		# Get the internal payment account
 		gc_settings = frappe.get_last_doc("GoCardless Settings", filters={"use_sandbox": 0})
 		payment_gateway = frappe.get_value(
@@ -114,7 +116,6 @@ def create_payout_journal(event):
 
 		# Get the internal deposit and fees accounts
 		client = gc_settings.initialize_client()
-		payout = client.payouts.get(payout_id)
 		gc_bank_account = payout.links.creditor_bank_account
 		account_number_ending = client.creditor_bank_accounts.get(gc_bank_account).attributes.get(
 			"account_number_ending"
