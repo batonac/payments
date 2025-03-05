@@ -61,12 +61,17 @@ class GoCardlessSettings(Document):
 			data["charge_date"] = str(
 				max(data.get("charge_date"), frappe.utils.getdate(next_possible_charge_date))
 			)
+			# debug
+			frappe.log_error("data", data)
 			self.create_payment_request(data)
 			return False
 		else:
 			return True
 
 	def check_mandate_validity(self, data):
+     
+		# debug
+		frappe.log_error("check_mandate_validity", data)
 
 		if frappe.db.exists("GoCardless Mandate", dict(customer=data.get("payer_name"), disabled=0)):
 			registered_mandate = frappe.db.get_value(
@@ -81,6 +86,8 @@ class GoCardlessSettings(Document):
 				or mandate.status == "submitted"
 				or mandate.status == "active"
 			):
+				# debug
+				frappe.log_error("mandate", mandate)
 				return {"mandate": registered_mandate}, mandate.next_possible_charge_date
 			else:
 				return None, None

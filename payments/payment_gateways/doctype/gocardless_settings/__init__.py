@@ -99,12 +99,16 @@ def set_payment_request_status(event):
 def create_payout_journal(event):
 	# Extract relevant data from the event
 	payout_id = event.get("links").get("payout")
+	# get the client
+	gc_settings = frappe.get_last_doc("GoCardless Settings", filters={"use_sandbox": 0})
+	client = gc_settings.initialize_client()
 	payout = client.payouts.get(payout_id)
+	print(f"Processing payout {payout_id} with reference {payout.reference}")
 	if frappe.db.exists("Journal Entry", {"cheque_no": payout.reference}):
 		return
+	print(f"Creating journal entry for payout {payout_id}")
 	try:
 		# Get the internal payment account
-		gc_settings = frappe.get_last_doc("GoCardless Settings", filters={"use_sandbox": 0})
 		payment_gateway = frappe.get_value(
 			"Payment Gateway", filters={"gateway_controller": gc_settings.name}, fieldname="name"
 		)
@@ -115,7 +119,6 @@ def create_payout_journal(event):
 		)
 
 		# Get the internal deposit and fees accounts
-		client = gc_settings.initialize_client()
 		gc_bank_account = payout.links.creditor_bank_account
 		account_number_ending = client.creditor_bank_accounts.get(gc_bank_account).attributes.get(
 			"account_number_ending"
