@@ -66,11 +66,16 @@ class GoCardlessSettings(Document):
             data["charge_date"] = str(
                 max(data.get("charge_date"), frappe.utils.getdate(next_possible_charge_date))
             )
-            # debug
-            frappe.log_error("data", data)
-            self.create_payment_request(data)
+            print("on_payment_request_submission", data)
+            try:
+                self.create_payment_request(data)
+                print("create_payment_request completed successfully")
+            except Exception as e:
+                print("create_payment_request failed", str(e))
+                raise  # Re-raise to see the full traceback
             return False
         else:
+            print("No valid mandate found for customer", data.get("payer_name"))
             return True
 
     def check_mandate_validity(self, data):
@@ -139,8 +144,8 @@ class GoCardlessSettings(Document):
             ).insert(ignore_permissions=True)
             return self.create_charge_on_gocardless()
 
-        except Exception:
-            frappe.log_error("Gocardless payment request failed")
+        except Exception as e:
+            frappe.log_error("Gocardless payment request failed", str(e))
             return {
                 "redirect_to": frappe.redirect_to_message(
                     _("Server Error"),
@@ -198,12 +203,10 @@ class GoCardlessSettings(Document):
 
                 case "cancelled" | "customer_approval_denied" | "charged_back":
                     self.integration_request.db_set("status", "Cancelled", update_modified=False)
-                    frappe.log_error("Gocardless payment cancelled")
                     self.integration_request.db_set("error", payment.status, update_modified=False)
 
                 case _:
                     self.integration_request.db_set("status", "Failed", update_modified=False)
-                    frappe.log_error("Gocardless payment failed")
                     self.integration_request.db_set("error", payment.status, update_modified=False)
 
         except Exception as e:
@@ -218,8 +221,8 @@ class GoCardlessSettings(Document):
                     custom_redirect_to = frappe.get_doc(
                         self.data.get("reference_doctype"), self.data.get("reference_docname")
                     ).run_method("on_payment_authorized", self.flags.status_changed_to)
-                except Exception:
-                    frappe.log_error("Gocardless redirect failed")
+                except Exception as e:
+                    frappe.log_error("Gocardless redirect failed", str(e))
 
                 if custom_redirect_to:
                     redirect_to = custom_redirect_to

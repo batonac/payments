@@ -86,10 +86,17 @@ def set_payment_request_status(event):
         doc.add_comment(
             "Info", text=comment, comment_by="GoCardless", comment_email=comment_email
         ).db_set("subject", event_action)
+        doc.db_update()
     if event_action == "submitted" and doc.status != "Initiated":
         doc.db_set("status", "Initiated")
     if event_action in ["confirmed", "paid_out"] and doc.status != "Paid":
-        doc.set_as_paid()
+        try:
+            doc.set_as_paid()
+        except Exception as e:
+            frappe.log_error(
+                f"GoCardless Payment Request {doc.name} set_as_paid error",
+                str(e),
+            )
     if event_action == "cancelled" and doc.status != "Cancelled":
         doc.set_as_cancelled()
     if event_action == "failed" and doc.status != "Failed":
