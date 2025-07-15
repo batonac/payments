@@ -8,7 +8,7 @@ import json
 
 import frappe
 from dateutil import parser
-
+from frappe.integrations.doctype.webhook.webhook import log_request
 
 @frappe.whitelist(allow_guest=True)
 def webhooks():
@@ -22,6 +22,15 @@ def webhooks():
     gocardless_events = json.loads(r.get_data()) or []
     for event in gocardless_events["events"]:
         set_status(event)
+        
+    # log request
+    log_request(
+        webhook="",
+        docname="",
+        url=r.url,
+        headers=r.headers,
+        data=gocardless_events,
+    )
 
     # debug
     # frappe.log_error("GoCardless Webhook", str(gocardless_events))
@@ -91,6 +100,8 @@ def set_payment_request_status(event):
         doc.db_set("status", "Initiated")
     if event_action in ["confirmed", "paid_out"] and doc.status != "Paid":
         try:
+            # set session user to system user to avoid permission issues
+            frappe.local.session.user = "Administrator"
             doc.set_as_paid()
         except Exception as e:
             frappe.log_error(
