@@ -113,6 +113,7 @@ def set_payment_request_status(event):
                 # set session user to system user to avoid permission issues
                 frappe.local.session.user = "Administrator"
                 doc.set_as_paid()
+                doc.db_set("status", "Paid")
             except Exception as e:
                 frappe.log_error(
                     f"GoCardless Payment Request {doc.name} set_as_paid error",
