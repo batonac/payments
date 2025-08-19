@@ -99,15 +99,25 @@ def set_payment_request_status(event):
     if event_action == "submitted" and doc.status != "Initiated":
         doc.db_set("status", "Initiated")
     if event_action in ["confirmed", "paid_out"] and doc.status != "Paid":
-        try:
-            # set session user to system user to avoid permission issues
-            frappe.local.session.user = "Administrator"
-            doc.set_as_paid()
-        except Exception as e:
-            frappe.log_error(
-                f"GoCardless Payment Request {doc.name} set_as_paid error",
-                str(e),
-            )
+        # check if payment entry exists
+        payment_entry_exists = frappe.db.exists(
+            "Payment Entry",
+            {
+                "reference_no": doc.name,
+                "docstatus": 1,
+            }
+        )
+        if not payment_entry_exists:
+            # create payment entry
+            try:
+                # set session user to system user to avoid permission issues
+                frappe.local.session.user = "Administrator"
+                doc.set_as_paid()
+            except Exception as e:
+                frappe.log_error(
+                    f"GoCardless Payment Request {doc.name} set_as_paid error",
+                    str(e),
+                )
     if event_action == "cancelled" and doc.status != "Cancelled":
         doc.set_as_cancelled()
     if event_action == "failed" and doc.status != "Failed":
