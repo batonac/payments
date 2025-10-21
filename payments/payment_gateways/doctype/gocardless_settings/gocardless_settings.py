@@ -36,7 +36,9 @@ class GoCardlessSettings(Document):
             settings="GoCardless Settings",
             controller=self.gateway_name,
         )
-        call_hook_method("payment_gateway_enabled", gateway="GoCardless-" + self.gateway_name)
+        call_hook_method(
+            "payment_gateway_enabled", gateway="GoCardless-" + self.gateway_name
+        )
 
     def on_payment_request_submission(self, data):
         if data.reference_doctype != "Fees":
@@ -64,7 +66,10 @@ class GoCardlessSettings(Document):
         if valid_mandate is not None:
             data.update(valid_mandate)
             data["charge_date"] = str(
-                max(data.get("charge_date"), frappe.utils.getdate(next_possible_charge_date))
+                max(
+                    data.get("charge_date"),
+                    frappe.utils.getdate(next_possible_charge_date),
+                )
             )
             print("on_payment_request_submission", data)
             try:
@@ -84,7 +89,9 @@ class GoCardlessSettings(Document):
             "GoCardless Mandate", dict(customer=data.get("payer_name"), disabled=0)
         ):
             registered_mandate = frappe.db.get_value(
-                "GoCardless Mandate", dict(customer=data.get("payer_name"), disabled=0), "mandate"
+                "GoCardless Mandate",
+                dict(customer=data.get("payer_name"), disabled=0),
+                "mandate",
             )
             self.initialize_client()
             mandate = self.client.mandates.get(registered_mandate)
@@ -107,7 +114,9 @@ class GoCardlessSettings(Document):
                 )
                 return None, None
             else:
-                return {"mandate": registered_mandate}, mandate.next_possible_charge_date
+                return {
+                    "mandate": registered_mandate
+                }, mandate.next_possible_charge_date
         else:
             return None, None
 
@@ -132,7 +141,9 @@ class GoCardlessSettings(Document):
         self.data = frappe._dict(data)
 
         try:
-            self.integration_request = create_request_log(self.data, "Host", "GoCardless")
+            self.integration_request = create_request_log(
+                self.data, "Host", "GoCardless"
+            )
             frappe.get_doc(
                 {
                     "doctype": "Comment",
@@ -188,26 +199,38 @@ class GoCardlessSettings(Document):
 
             match payment.status:
                 case "pending_submission" | "pending_customer_approval" | "submitted":
-                    self.integration_request.db_set("status", "Authorized", update_modified=False)
+                    self.integration_request.db_set(
+                        "status", "Authorized", update_modified=False
+                    )
                     self.flags.status_changed_to = "Completed"
                     self.integration_request.db_set(
                         "output", payment.status, update_modified=False
                     )
 
                 case "confirmed" | "paid_out":
-                    self.integration_request.db_set("status", "Completed", update_modified=False)
+                    self.integration_request.db_set(
+                        "status", "Completed", update_modified=False
+                    )
                     self.flags.status_changed_to = "Completed"
                     self.integration_request.db_set(
                         "output", payment.status, update_modified=False
                     )
 
                 case "cancelled" | "customer_approval_denied" | "charged_back":
-                    self.integration_request.db_set("status", "Cancelled", update_modified=False)
-                    self.integration_request.db_set("error", payment.status, update_modified=False)
+                    self.integration_request.db_set(
+                        "status", "Cancelled", update_modified=False
+                    )
+                    self.integration_request.db_set(
+                        "error", payment.status, update_modified=False
+                    )
 
                 case _:
-                    self.integration_request.db_set("status", "Failed", update_modified=False)
-                    self.integration_request.db_set("error", payment.status, update_modified=False)
+                    self.integration_request.db_set(
+                        "status", "Failed", update_modified=False
+                    )
+                    self.integration_request.db_set(
+                        "error", payment.status, update_modified=False
+                    )
 
         except Exception as e:
             self.integration_request.db_set("error", str(e))
@@ -219,7 +242,8 @@ class GoCardlessSettings(Document):
                 custom_redirect_to = None
                 try:
                     custom_redirect_to = frappe.get_doc(
-                        self.data.get("reference_doctype"), self.data.get("reference_docname")
+                        self.data.get("reference_doctype"),
+                        self.data.get("reference_docname"),
                     ).run_method("on_payment_authorized", self.flags.status_changed_to)
                 except Exception as e:
                     frappe.log_error("Gocardless redirect failed", str(e))
@@ -241,8 +265,6 @@ class GoCardlessSettings(Document):
 
 
 def get_gateway_controller(doc):
-	payment_request = frappe.get_doc("Payment Request", doc)
-	return frappe.db.get_value("Payment Gateway", payment_request.payment_gateway, "gateway_controller")
     payment_request = frappe.get_doc("Payment Request", doc)
     gateway_controller = frappe.db.get_value(
         "Payment Gateway", payment_request.payment_gateway, "gateway_controller"
@@ -251,10 +273,6 @@ def get_gateway_controller(doc):
 
 
 def gocardless_initialization(doc):
-	gateway_controller = get_gateway_controller(doc)
-	settings = frappe.get_doc("GoCardless Settings", gateway_controller)
-	return settings.initialize_client()
     gateway_controller = get_gateway_controller(doc)
     settings = frappe.get_doc("GoCardless Settings", gateway_controller)
-    client = settings.initialize_client()
-    return client
+    return settings.initialize_client()
