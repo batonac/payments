@@ -32,9 +32,10 @@
    "options": "gateway_settings"
   }
  ],
+ "grid_page_length": 50,
  "links": [],
- "modified": "2022-07-24 21:17:03.864719",
- "modified_by": "Administrator",
+ "modified": "2026-01-12 12:06:44.417439",
+ "modified_by": "kevin@avu.nu",
  "module": "Payments",
  "name": "Payment Gateway",
  "naming_rule": "By fieldname",
@@ -49,6 +50,7 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
