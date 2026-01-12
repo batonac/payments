@@ -79,6 +79,7 @@ class PaymentWebForm(WebForm):
 				"payer_name": payer_name,
 				"order_id": doc.name,
 				"currency": self.currency,
+				"payment_gateway": self.payment_gateway,
 				"redirect_to": get_url(self.success_url or self.route or ""),
 			}
 
