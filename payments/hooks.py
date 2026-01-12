@@ -112,9 +112,9 @@ extend_doctype_class = {"Web Form": "payments.overrides.payment_webform.PaymentW
 # ---------------
 
 scheduler_events = {
-    "all": [
-        "payments.payment_gateways.doctype.razorpay_settings.razorpay_settings.capture_payment",
-    ],
+	"all": [
+		"payments.payment_gateways.doctype.razorpay_settings.razorpay_settings.capture_payment",
+	],
 }
 
 # Testing
@@ -126,7 +126,7 @@ before_tests = "erpnext.setup.utils.before_tests"  # To setup company and accoun
 # ------------------------------
 #
 override_whitelisted_methods = {
-    "frappe.website.doctype.web_form.web_form.accept": "payments.overrides.payment_webform.accept"
+	"frappe.website.doctype.web_form.web_form.accept": "payments.overrides.payment_webform.accept"
 }
 #
 # each overriding function accepts a `data` argument;
