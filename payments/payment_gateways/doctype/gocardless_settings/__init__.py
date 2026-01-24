@@ -26,6 +26,7 @@ def webhooks():
 	# log request
 	log_request(
 		webhook="",
+		doctype="",
 		docname="",
 		url=r.url,
 		headers=r.headers,
