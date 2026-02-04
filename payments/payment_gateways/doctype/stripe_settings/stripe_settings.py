@@ -32,6 +32,21 @@ currency_wise_minimum_charge_amount = {
 
 
 class StripeSettings(Document):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		gateway_name: DF.Data
+		header_img: DF.AttachImage | None
+		publishable_key: DF.Data
+		redirect_url: DF.Data | None
+		secret_key: DF.Password
+	# end: auto-generated types
+
 	supported_currencies = (
 		"AED",
 		"ALL",

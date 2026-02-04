@@ -79,6 +79,19 @@ from payments.utils import create_payment_gateway
 
 
 class RazorpaySettings(Document):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		api_key: DF.Data
+		api_secret: DF.Password
+		redirect_to: DF.Data | None
+	# end: auto-generated types
+
 	supported_currencies = (
 		"AED",
 		"ALL",
