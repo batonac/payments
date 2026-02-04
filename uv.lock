@@ -4,14 +4,14 @@ requires-python = ">=3.10"
 
 [[package]]
 name = "braintree"
-version = "4.20.0"
+version = "4.42.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f5/b7/ffceae7d7e65a0a7f7ae2b72731f39727f2b4b7ea56815dc608f4b63cf96/braintree-4.20.0.tar.gz", hash = "sha256:f5560c2dc6f7092a84fefbaadd611b6121809888680a9ddab3ab1ab8963848c6", size = 87113, upload-time = "2023-05-22T18:12:15.279Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3a/d9/36d2afa50d4cffd2922a750ec0fe8b79d2885108a7050d77def52b693b10/braintree-4.42.0.tar.gz", hash = "sha256:6cb85424c151ecf49523986b687188774bc5868519025a8d548ffb1cf6df6964", size = 108017, upload-time = "2026-02-02T20:18:52.488Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/41/ca/61cfba690f71f36c8f0506d211a37a59d6d632654cfb966d3d6deeffe115/braintree-4.20.0-py2.py3-none-any.whl", hash = "sha256:7c3766bc089b3439e1e3f899a91501fab40cc174e775ae334d06ced1694ebaf0", size = 137590, upload-time = "2023-05-22T18:12:13.555Z" },
+    { url = "https://files.pythonhosted.org/packages/0d/ad/cde7438a95d96365d406fc7c453213389a1911b4b24364350900415ee530/braintree-4.42.0-py2.py3-none-any.whl", hash = "sha256:5f809216510f331fb2a7233e949080908d09931afc9572615da684c9cdb2d751", size = 168513, upload-time = "2026-02-02T20:18:50.968Z" },
 ]
 
 [[package]]
@@ -114,13 +114,16 @@ wheels = [
 
 [[package]]
 name = "gocardless-pro"
-version = "1.22.0"
+version = "3.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
     { name = "six" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/20/7a/0867057c48d6d220a97d0e8d824884eedf3064fa38fa855145f35c289943/gocardless_pro-1.22.0.tar.gz", hash = "sha256:8b8801789be5fda0ae8de5c6bc91becf55a9d9a7332a0f1c9677ccc8af1fcffc", size = 35946, upload-time = "2020-11-03T12:14:43.754Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/62/e5/3c43478a1be65880484c189981d7b93024d6b7d5e707da705792bd6e861e/gocardless_pro-3.3.0.tar.gz", hash = "sha256:7c04e0444327197502368130694570ac300e6f8360f06f9b125bc671c13d0465", size = 61972, upload-time = "2025-11-20T10:12:24.28Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/db/0e/4fe92549cb17748888545bb60e88b4fe5c6b8c8fffcba1721a7319d19041/gocardless_pro-3.3.0-py3-none-any.whl", hash = "sha256:c59269536cbc8aa1c839f394572a5f49f2c36e5fc1402f921411b10c6e4bc98b", size = 149719, upload-time = "2025-11-20T10:12:23.25Z" },
+]
 
 [[package]]
 name = "idna"
@@ -146,13 +149,13 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "braintree", specifier = "~=4.20.0" },
-    { name = "gocardless-pro", specifier = "~=1.22.0" },
-    { name = "paytmchecksum", specifier = "~=1.7.0" },
+    { name = "braintree", specifier = ">=4.20.0" },
+    { name = "gocardless-pro", specifier = ">=1.22.0" },
+    { name = "paytmchecksum", specifier = ">=1.7.0" },
     { name = "pycryptodome", specifier = ">=3.18.0,<4.0.0" },
-    { name = "razorpay", specifier = "~=1.4.2" },
-    { name = "setuptools", specifier = "==80.9.0" },
-    { name = "stripe", specifier = "~=10.12.0" },
+    { name = "razorpay", specifier = ">=1.4.2" },
+    { name = "setuptools", specifier = ">=80.9.0" },
+    { name = "stripe", specifier = ">=14.0.0" },
 ]
 
 [[package]]
@@ -198,14 +201,14 @@ wheels = [
 
 [[package]]
 name = "razorpay"
-version = "1.4.2"
+version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/97/fb/14d5baeffc5b812775bc34cb7d416aa090be6f5779c04aaf45d2ba17458b/razorpay-1.4.2.tar.gz", hash = "sha256:0d812030ba29e776e66d1ceaacc31635810fde18b66ff2591e582eb651bb5131", size = 194335, upload-time = "2024-03-19T12:12:08.904Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/65/d6/2b8d750c4c7c1b9fdcc997ac5b0b5c4a165948931f82b3ce3fcab049f775/razorpay-2.0.0.tar.gz", hash = "sha256:929aef2f4aec8190dfe12b79ba09e83c39086f6ea0bffa0586b719c5b9054450", size = 197062, upload-time = "2025-09-22T08:23:22.07Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e9/3d/07a25e3c6f3d65a319da30300f055d946860e90f705c05bb39524dc46f30/razorpay-1.4.2-py3-none-any.whl", hash = "sha256:aaf525baebc5001e5c54ae317a372c3c17c81314cedcbbf71aa0a2d3419a9757", size = 174302, upload-time = "2024-03-19T12:12:06.883Z" },
+    { url = "https://files.pythonhosted.org/packages/4b/f6/d16cd89374c16cfdce2e30b80e98afd095713ae5fe33fd813b0a89ee1e67/razorpay-2.0.0-py3-none-any.whl", hash = "sha256:524cf1726f673fc72d448f83fd2ea479526d2dd48641ca75ee9a58e25300784a", size = 176858, upload-time = "2025-09-22T08:23:20.689Z" },
 ]
 
 [[package]]
@@ -225,11 +228,11 @@ wheels = [
 
 [[package]]
 name = "setuptools"
-version = "80.9.0"
+version = "80.10.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/18/5d/3bf57dcd21979b887f014ea83c24ae194cfcd12b9e0fda66b957c69d1fca/setuptools-80.9.0.tar.gz", hash = "sha256:f36b47402ecde768dbfafc46e8e4207b4360c654f1f3bb84475f0a28628fb19c", size = 1319958, upload-time = "2025-05-27T00:56:51.443Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/76/95/faf61eb8363f26aa7e1d762267a8d602a1b26d4f3a1e758e92cb3cb8b054/setuptools-80.10.2.tar.gz", hash = "sha256:8b0e9d10c784bf7d262c4e5ec5d4ec94127ce206e8738f29a437945fbc219b70", size = 1200343, upload-time = "2026-01-25T22:38:17.252Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/dc/17031897dae0efacfea57dfd3a82fdd2a2aeb58e0ff71b77b87e44edc772/setuptools-80.9.0-py3-none-any.whl", hash = "sha256:062d34222ad13e0cc312a4c02d73f059e86a4acbfbdea8f8f76b28c99f306922", size = 1201486, upload-time = "2025-05-27T00:56:49.664Z" },
+    { url = "https://files.pythonhosted.org/packages/94/b8/f1f62a5e3c0ad2ff1d189590bfa4c46b4f3b6e49cef6f26c6ee4e575394d/setuptools-80.10.2-py3-none-any.whl", hash = "sha256:95b30ddfb717250edb492926c92b5221f7ef3fbcc2b07579bcd4a27da21d0173", size = 1064234, upload-time = "2026-01-25T22:38:15.216Z" },
 ]
 
 [[package]]
@@ -243,15 +246,15 @@ wheels = [
 
 [[package]]
 name = "stripe"
-version = "10.12.0"
+version = "14.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b3/26/157cb00639548cf5c948ac3468dce817c2db67b7e56a154f420e8232d032/stripe-10.12.0.tar.gz", hash = "sha256:5abec44548d3814bc1e070aa1852bcb3fc5cc029e947c0f733156eb1f8c87030", size = 1318680, upload-time = "2024-09-18T18:47:21.196Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/49/67/8a38222a57fc2ba359c4dcb66528d94c00d803c7fde8f8d8470ad6bdccbb/stripe-14.3.0.tar.gz", hash = "sha256:4c76137d741bd43e8bb433a596c198ca20f4cdf17a8fe04604faf37c74b01978", size = 1463618, upload-time = "2026-01-28T21:20:29.856Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8e/5d/f3e1be3bb66678c7299b87083a2f81aeec5f7ecf0bf19c5dbcb270d91065/stripe-10.12.0-py2.py3-none-any.whl", hash = "sha256:0c79c1f3a844533c8d30cc283b43afb622aaa402539fca19167a9004fea3471c", size = 1559770, upload-time = "2024-09-18T18:47:19.42Z" },
+    { url = "https://files.pythonhosted.org/packages/9e/4b/0b7d5920f2be5e42d72bdfc44a9fae57b422668bfc8dacdf2f74886f6daa/stripe-14.3.0-py3-none-any.whl", hash = "sha256:3e36b68b256c8970e99b703e195d947e2a2919095758788c7074ac4485ac255e", size = 2106980, upload-time = "2026-01-28T21:20:27.566Z" },
 ]
 
 [[package]]
