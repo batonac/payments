@@ -10,6 +10,7 @@ import frappe
 from dateutil import parser
 from frappe.integrations.doctype.webhook.webhook import log_request
 
+
 @frappe.whitelist(allow_guest=True)
 def webhooks():
 	r = frappe.request
@@ -22,7 +23,7 @@ def webhooks():
 	gocardless_events = json.loads(r.get_data()) or []
 	for event in gocardless_events["events"]:
 		set_status(event)
-		
+
 	# log request
 	log_request(
 		webhook="",
@@ -81,21 +82,21 @@ def set_payment_request_status(event):
 	comment_email = "help@gocardless.com"
 	comment = ""
 	if event_action:
-		comment += f"<strong>GoCardless Event: <em>{event_action.replace('_', ' ').capitalize()}</em></strong>"
+		comment += (
+			f"<strong>GoCardless Event: <em>{event_action.replace('_', ' ').capitalize()}</em></strong>"
+		)
 	if event_description:
 		comment += f"<br>{event_description}"
 	if payment_id:
-		comment += (
-			f"<br><a href='https://manage.gocardless.com/payments/{payment_id}'>View Payment</a>"
-		)
+		comment += f"<br><a href='https://manage.gocardless.com/payments/{payment_id}'>View Payment</a>"
 	payment_request = event.get("resource_metadata", {}).get("reference_document")
 	if not payment_request:
 		return
 	doc = frappe.get_doc("Payment Request", payment_request)
 	if comment:
-		doc.add_comment(
-			"Info", text=comment, comment_by="GoCardless", comment_email=comment_email
-		).db_set("subject", event_action)
+		doc.add_comment("Info", text=comment, comment_by="GoCardless", comment_email=comment_email).db_set(
+			"subject", event_action
+		)
 		doc.db_update()
 	if event_action == "submitted" and doc.status != "Initiated":
 		doc.db_set("status", "Initiated")
@@ -106,7 +107,7 @@ def set_payment_request_status(event):
 			{
 				"reference_no": doc.name,
 				"docstatus": 1,
-			}
+			},
 		)
 		if not payment_entry_exists:
 			# create payment entry
@@ -218,9 +219,7 @@ def authenticate_signature(r):
 		return False
 
 	for key in get_webhook_keys():
-		computed_signature = hmac.new(
-			key.encode("utf-8"), r.get_data(), hashlib.sha256
-		).hexdigest()
+		computed_signature = hmac.new(key.encode("utf-8"), r.get_data(), hashlib.sha256).hexdigest()
 		if hmac.compare_digest(str(received_signature), computed_signature):
 			return True
 

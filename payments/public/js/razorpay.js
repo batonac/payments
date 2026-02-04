@@ -83,7 +83,7 @@ frappe.require("https://checkout.razorpay.com/v1/checkout.js").then(() => {
       return new Promise((resolve) => {
         frappe
           .call(
-            "payments.payment_gateways.doctype.razorpay_settings.razorpay_settings.get_api_key"
+            "payments.payment_gateways.doctype.razorpay_settings.razorpay_settings.get_api_key",
           )
           .then((res) => {
             this.key = res.message;
@@ -100,7 +100,7 @@ frappe.require("https://checkout.razorpay.com/v1/checkout.js").then(() => {
             {
               doctype: this.doctype,
               docname: this.docname,
-            }
+            },
           )
           .then((res) => {
             this.order = res.message;
@@ -119,7 +119,7 @@ frappe.require("https://checkout.razorpay.com/v1/checkout.js").then(() => {
             razorpay_order_id: response.razorpay_order_id,
             razorpay_signature: response.razorpay_signature,
           },
-        }
+        },
       );
     }
 
@@ -129,7 +129,7 @@ frappe.require("https://checkout.razorpay.com/v1/checkout.js").then(() => {
         {
           integration_request: this.order.integration_request,
           params: response,
-        }
+        },
       );
     }
 

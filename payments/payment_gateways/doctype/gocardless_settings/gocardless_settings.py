@@ -13,282 +13,251 @@ from frappe.utils import call_hook_method, cint, flt, get_url
 
 
 class GoCardlessSettings(Document):
-    # begin: auto-generated types
-    # This code is auto-generated. Do not modify anything in this block.
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
 
-    from typing import TYPE_CHECKING
+	from typing import TYPE_CHECKING
 
-    if TYPE_CHECKING:
-        from frappe.types import DF
+	if TYPE_CHECKING:
+		from frappe.types import DF
 
-        access_token: DF.Data
-        fees_account: DF.Link | None
-        gateway_name: DF.Data
-        header_img: DF.AttachImage | None
-        use_sandbox: DF.Check
-        webhooks_secret: DF.Data | None
-    # end: auto-generated types
+		access_token: DF.Data
+		fees_account: DF.Link | None
+		gateway_name: DF.Data
+		header_img: DF.AttachImage | None
+		use_sandbox: DF.Check
+		webhooks_secret: DF.Data | None
+	# end: auto-generated types
 
-    supported_currencies = ("EUR", "DKK", "GBP", "SEK", "AUD", "NZD", "CAD", "USD")
+	supported_currencies = ("EUR", "DKK", "GBP", "SEK", "AUD", "NZD", "CAD", "USD")
 
-    def validate(self):
-        self.initialize_client()
+	def validate(self):
+		self.initialize_client()
 
-    def initialize_client(self):
-        self.environment = self.get_environment()
-        try:
-            self.client = gocardless_pro.Client(
-                access_token=self.access_token, environment=self.environment
-            )
-            return self.client
-        except Exception as e:
-            frappe.throw(e)
+	def initialize_client(self):
+		self.environment = self.get_environment()
+		try:
+			self.client = gocardless_pro.Client(access_token=self.access_token, environment=self.environment)
+			return self.client
+		except Exception as e:
+			frappe.throw(e)
 
-    def on_update(self):
-        from payments.utils import create_payment_gateway
+	def on_update(self):
+		from payments.utils import create_payment_gateway
 
-        create_payment_gateway(
-            "GoCardless-" + self.gateway_name,
-            settings="GoCardless Settings",
-            controller=self.gateway_name,
-        )
-        call_hook_method(
-            "payment_gateway_enabled", gateway="GoCardless-" + self.gateway_name
-        )
+		create_payment_gateway(
+			"GoCardless-" + self.gateway_name,
+			settings="GoCardless Settings",
+			controller=self.gateway_name,
+		)
+		call_hook_method("payment_gateway_enabled", gateway="GoCardless-" + self.gateway_name)
 
-    def on_payment_request_submission(self, data):
-        if data.reference_doctype != "Fees":
-            customer_data = frappe.db.get_value(
-                data.reference_doctype,
-                data.reference_name,
-                ["company", "customer_name"],
-                as_dict=1,
-            )
+	def on_payment_request_submission(self, data):
+		if data.reference_doctype != "Fees":
+			customer_data = frappe.db.get_value(
+				data.reference_doctype,
+				data.reference_name,
+				["company", "customer_name"],
+				as_dict=1,
+			)
 
-        data = {
-            "amount": flt(data.grand_total, data.precision("grand_total")),
-            "title": customer_data.company.encode("utf-8"),
-            "description": data.subject.encode("utf-8"),
-            "reference_doctype": data.doctype,
-            "reference_docname": data.name,
-            "payer_email": data.email_to or frappe.session.user,
-            "payer_name": customer_data.customer_name,
-            "order_id": data.name,
-            "currency": data.currency,
-            "charge_date": data.transaction_date or frappe.utils.getdate(),
-        }
+		data = {
+			"amount": flt(data.grand_total, data.precision("grand_total")),
+			"title": customer_data.company.encode("utf-8"),
+			"description": data.subject.encode("utf-8"),
+			"reference_doctype": data.doctype,
+			"reference_docname": data.name,
+			"payer_email": data.email_to or frappe.session.user,
+			"payer_name": customer_data.customer_name,
+			"order_id": data.name,
+			"currency": data.currency,
+			"charge_date": data.transaction_date or frappe.utils.getdate(),
+		}
 
-        valid_mandate, next_possible_charge_date = self.check_mandate_validity(data)
-        if valid_mandate is not None:
-            data.update(valid_mandate)
-            data["charge_date"] = str(
-                max(
-                    data.get("charge_date"),
-                    frappe.utils.getdate(next_possible_charge_date),
-                )
-            )
-            print("on_payment_request_submission", data)
-            try:
-                self.create_payment_request(data)
-                print("create_payment_request completed successfully")
-            except Exception as e:
-                print("create_payment_request failed", str(e))
-                raise  # Re-raise to see the full traceback
-            return False
-        else:
-            print("No valid mandate found for customer", data.get("payer_name"))
-            return True
+		valid_mandate, next_possible_charge_date = self.check_mandate_validity(data)
+		if valid_mandate is not None:
+			data.update(valid_mandate)
+			data["charge_date"] = str(
+				max(
+					data.get("charge_date"),
+					frappe.utils.getdate(next_possible_charge_date),
+				)
+			)
+			print("on_payment_request_submission", data)
+			try:
+				self.create_payment_request(data)
+				print("create_payment_request completed successfully")
+			except Exception as e:
+				print("create_payment_request failed", str(e))
+				raise  # Re-raise to see the full traceback
+			return False
+		else:
+			print("No valid mandate found for customer", data.get("payer_name"))
+			return True
 
-    def check_mandate_validity(self, data):
+	def check_mandate_validity(self, data):
+		if frappe.db.exists("GoCardless Mandate", dict(customer=data.get("payer_name"), disabled=0)):
+			registered_mandate = frappe.db.get_value(
+				"GoCardless Mandate",
+				dict(customer=data.get("payer_name"), disabled=0),
+				"mandate",
+			)
+			self.initialize_client()
+			mandate = self.client.mandates.get(registered_mandate)
 
-        if frappe.db.exists(
-            "GoCardless Mandate", dict(customer=data.get("payer_name"), disabled=0)
-        ):
-            registered_mandate = frappe.db.get_value(
-                "GoCardless Mandate",
-                dict(customer=data.get("payer_name"), disabled=0),
-                "mandate",
-            )
-            self.initialize_client()
-            mandate = self.client.mandates.get(registered_mandate)
+			invalid_statuses = [
+				"blocked",
+				"cancelled",
+				"consumed",
+				"expired",
+				"failed",
+				"suspended_by_payer",
+			]
 
-            invalid_statuses = [
-                "blocked",
-                "cancelled",
-                "consumed",
-                "expired",
-                "failed",
-                "suspended_by_payer",
-            ]
+			if mandate.status in invalid_statuses:
+				frappe.db.set_value(
+					"GoCardless Mandate",
+					dict(customer=data.get("payer_name"), disabled=0),
+					"disabled",
+					1,
+				)
+				return None, None
+			else:
+				return {"mandate": registered_mandate}, mandate.next_possible_charge_date
+		else:
+			return None, None
 
-            if mandate.status in invalid_statuses:
-                frappe.db.set_value(
-                    "GoCardless Mandate",
-                    dict(customer=data.get("payer_name"), disabled=0),
-                    "disabled",
-                    1,
-                )
-                return None, None
-            else:
-                return {
-                    "mandate": registered_mandate
-                }, mandate.next_possible_charge_date
-        else:
-            return None, None
+	def get_environment(self):
+		if self.use_sandbox:
+			return "sandbox"
+		else:
+			return "live"
 
-    def get_environment(self):
-        if self.use_sandbox:
-            return "sandbox"
-        else:
-            return "live"
+	def validate_transaction_currency(self, currency):
+		if currency not in self.supported_currencies:
+			frappe.throw(
+				_(
+					"Please select another payment method. Go Cardless does not support transactions in currency '{0}'"
+				).format(currency)
+			)
 
-    def validate_transaction_currency(self, currency):
-        if currency not in self.supported_currencies:
-            frappe.throw(
-                _(
-                    "Please select another payment method. Go Cardless does not support transactions in currency '{0}'"
-                ).format(currency)
-            )
+	def get_payment_url(self, **kwargs):
+		return get_url(f"gocardless_checkout?{urlencode(kwargs)}")
 
-    def get_payment_url(self, **kwargs):
-        return get_url(f"gocardless_checkout?{urlencode(kwargs)}")
+	def create_payment_request(self, data):
+		self.data = frappe._dict(data)
 
-    def create_payment_request(self, data):
-        self.data = frappe._dict(data)
+		try:
+			self.integration_request = create_request_log(self.data, "Host", "GoCardless")
+			frappe.get_doc(
+				{
+					"doctype": "Comment",
+					"reference_doctype": self.data.reference_doctype,
+					"reference_name": self.data.reference_docname,
+					"comment_type": "Info",
+					"content": f'Payment Requested via GoCardless. See the <a href="{self.integration_request.get_url()}">payment request</a> for more details.',
+				}
+			).insert(ignore_permissions=True)
+			return self.create_charge_on_gocardless()
 
-        try:
-            self.integration_request = create_request_log(
-                self.data, "Host", "GoCardless"
-            )
-            frappe.get_doc(
-                {
-                    "doctype": "Comment",
-                    "reference_doctype": self.data.reference_doctype,
-                    "reference_name": self.data.reference_docname,
-                    "comment_type": "Info",
-                    "content": f'Payment Requested via GoCardless. See the <a href="{self.integration_request.get_url()}">payment request</a> for more details.',
-                }
-            ).insert(ignore_permissions=True)
-            return self.create_charge_on_gocardless()
+		except Exception as e:
+			frappe.log_error("Gocardless payment request failed", str(e))
+			return {
+				"redirect_to": frappe.redirect_to_message(
+					_("Server Error"),
+					_(
+						"There seems to be an issue with the server's GoCardless configuration. Don't worry, in case of failure, the amount will get refunded to your account."
+					),
+				),
+				"status": 401,
+			}
 
-        except Exception as e:
-            frappe.log_error("Gocardless payment request failed", str(e))
-            return {
-                "redirect_to": frappe.redirect_to_message(
-                    _("Server Error"),
-                    _(
-                        "There seems to be an issue with the server's GoCardless configuration. Don't worry, in case of failure, the amount will get refunded to your account."
-                    ),
-                ),
-                "status": 401,
-            }
+	def create_charge_on_gocardless(self):
+		redirect_to = self.data.get("redirect_to") or None
+		redirect_message = self.data.get("redirect_message") or None
 
-    def create_charge_on_gocardless(self):
-        redirect_to = self.data.get("redirect_to") or None
-        redirect_message = self.data.get("redirect_message") or None
+		reference_doc = frappe.get_doc(self.data.get("reference_doctype"), self.data.get("reference_docname"))
+		self.initialize_client()
 
-        reference_doc = frappe.get_doc(
-            self.data.get("reference_doctype"), self.data.get("reference_docname")
-        )
-        self.initialize_client()
+		try:
+			payment = self.client.payments.create(
+				params={
+					"amount": cint(reference_doc.grand_total * 100),
+					"charge_date": self.data.get("charge_date"),
+					"currency": reference_doc.currency,
+					"links": {"mandate": self.data.get("mandate")},
+					"metadata": {
+						"reference_doctype": reference_doc.doctype,
+						"reference_document": reference_doc.name,
+					},
+				},
+				headers={
+					"Idempotency-Key": self.data.get("reference_docname"),
+				},
+			)
 
-        try:
-            payment = self.client.payments.create(
-                params={
-                    "amount": cint(reference_doc.grand_total * 100),
-                    "charge_date": self.data.get("charge_date"),
-                    "currency": reference_doc.currency,
-                    "links": {"mandate": self.data.get("mandate")},
-                    "metadata": {
-                        "reference_doctype": reference_doc.doctype,
-                        "reference_document": reference_doc.name,
-                    },
-                },
-                headers={
-                    "Idempotency-Key": self.data.get("reference_docname"),
-                },
-            )
+			self.integration_request.db_set("output", payment.api_response._response._content.decode())
 
-            self.integration_request.db_set(
-                "output", payment.api_response._response._content.decode()
-            )
+			match payment.status:
+				case "pending_submission" | "pending_customer_approval" | "submitted":
+					self.integration_request.db_set("status", "Authorized", update_modified=False)
+					self.flags.status_changed_to = "Completed"
+					self.integration_request.db_set("output", payment.status, update_modified=False)
 
-            match payment.status:
-                case "pending_submission" | "pending_customer_approval" | "submitted":
-                    self.integration_request.db_set(
-                        "status", "Authorized", update_modified=False
-                    )
-                    self.flags.status_changed_to = "Completed"
-                    self.integration_request.db_set(
-                        "output", payment.status, update_modified=False
-                    )
+				case "confirmed" | "paid_out":
+					self.integration_request.db_set("status", "Completed", update_modified=False)
+					self.flags.status_changed_to = "Completed"
+					self.integration_request.db_set("output", payment.status, update_modified=False)
 
-                case "confirmed" | "paid_out":
-                    self.integration_request.db_set(
-                        "status", "Completed", update_modified=False
-                    )
-                    self.flags.status_changed_to = "Completed"
-                    self.integration_request.db_set(
-                        "output", payment.status, update_modified=False
-                    )
+				case "cancelled" | "customer_approval_denied" | "charged_back":
+					self.integration_request.db_set("status", "Cancelled", update_modified=False)
+					self.integration_request.db_set("error", payment.status, update_modified=False)
 
-                case "cancelled" | "customer_approval_denied" | "charged_back":
-                    self.integration_request.db_set(
-                        "status", "Cancelled", update_modified=False
-                    )
-                    self.integration_request.db_set(
-                        "error", payment.status, update_modified=False
-                    )
+				case _:
+					self.integration_request.db_set("status", "Failed", update_modified=False)
+					self.integration_request.db_set("error", payment.status, update_modified=False)
 
-                case _:
-                    self.integration_request.db_set(
-                        "status", "Failed", update_modified=False
-                    )
-                    self.integration_request.db_set(
-                        "error", payment.status, update_modified=False
-                    )
+		except Exception as e:
+			self.integration_request.db_set("error", str(e))
+			frappe.log_error("GoCardless Payment Error", str(e))
 
-        except Exception as e:
-            self.integration_request.db_set("error", str(e))
-            frappe.log_error("GoCardless Payment Error", str(e))
+		if self.flags.status_changed_to == "Completed":
+			status = "Completed"
+			if "reference_doctype" in self.data and "reference_docname" in self.data:
+				custom_redirect_to = None
+				try:
+					custom_redirect_to = frappe.get_doc(
+						self.data.get("reference_doctype"),
+						self.data.get("reference_docname"),
+					).run_method("on_payment_authorized", self.flags.status_changed_to)
+				except Exception as e:
+					frappe.log_error("Gocardless redirect failed", str(e))
 
-        if self.flags.status_changed_to == "Completed":
-            status = "Completed"
-            if "reference_doctype" in self.data and "reference_docname" in self.data:
-                custom_redirect_to = None
-                try:
-                    custom_redirect_to = frappe.get_doc(
-                        self.data.get("reference_doctype"),
-                        self.data.get("reference_docname"),
-                    ).run_method("on_payment_authorized", self.flags.status_changed_to)
-                except Exception as e:
-                    frappe.log_error("Gocardless redirect failed", str(e))
+				if custom_redirect_to:
+					redirect_to = custom_redirect_to
 
-                if custom_redirect_to:
-                    redirect_to = custom_redirect_to
+			redirect_url = redirect_to
+		else:
+			status = "Error"
+			redirect_url = "payment-failed"
 
-            redirect_url = redirect_to
-        else:
-            status = "Error"
-            redirect_url = "payment-failed"
+			if redirect_message:
+				redirect_url += "&" + urlencode({"redirect_message": redirect_message})
 
-            if redirect_message:
-                redirect_url += "&" + urlencode({"redirect_message": redirect_message})
+			redirect_url = get_url(redirect_url)
 
-            redirect_url = get_url(redirect_url)
-
-        return {"redirect_to": redirect_url, "status": status}
+		return {"redirect_to": redirect_url, "status": status}
 
 
 def get_gateway_controller(doc):
-    payment_request = frappe.get_doc("Payment Request", doc)
-    gateway_controller = frappe.db.get_value(
-        "Payment Gateway", payment_request.payment_gateway, "gateway_controller"
-    )
-    return gateway_controller
+	payment_request = frappe.get_doc("Payment Request", doc)
+	gateway_controller = frappe.db.get_value(
+		"Payment Gateway", payment_request.payment_gateway, "gateway_controller"
+	)
+	return gateway_controller
 
 
 def gocardless_initialization(doc):
-    gateway_controller = get_gateway_controller(doc)
-    settings = frappe.get_doc("GoCardless Settings", gateway_controller)
-    return settings.initialize_client()
+	gateway_controller = get_gateway_controller(doc)
+	settings = frappe.get_doc("GoCardless Settings", gateway_controller)
+	return settings.initialize_client()

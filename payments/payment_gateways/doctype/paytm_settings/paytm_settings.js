@@ -6,9 +6,9 @@ frappe.ui.form.on("Paytm Settings", {
     frm.dashboard.set_headline(
       __("For more information, {0}.", [
         `<a href='https://erpnext.com/docs/user/manual/en/erpnext_integration/paytm-integration'>${__(
-          "Click here"
+          "Click here",
         )}</a>`,
-      ])
+      ]),
     );
   },
 });
