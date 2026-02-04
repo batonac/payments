@@ -18,7 +18,7 @@ scheduler_events = {
 	],
 }
 
-before_tests = "erpnext.setup.utils.before_tests"
+# before_tests = "erpnext.setup.utils.before_tests"
 
 override_whitelisted_methods = {
 	"frappe.website.doctype.web_form.web_form.accept": "payments.overrides.payment_webform.accept"
