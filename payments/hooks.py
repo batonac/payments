@@ -1,5 +1,3 @@
-from . import __version__ as app_version
-
 app_name = "payments"
 app_title = "Payments"
 app_publisher = "Frappe Technologies"
