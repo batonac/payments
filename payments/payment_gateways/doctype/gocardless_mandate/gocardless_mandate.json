@@ -29,7 +29,10 @@
   {
    "fieldname": "gocardless_customer",
    "fieldtype": "Data",
+   "in_filter": 1,
    "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
    "label": "GoCardless Customer",
    "read_only": 1,
    "reqd": 1
@@ -37,13 +40,17 @@
   {
    "fieldname": "customer",
    "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
    "label": "ERPNext Customer",
    "options": "Customer"
   }
  ],
  "grid_page_length": 50,
  "links": [],
- "modified": "2026-02-03 20:26:06.852977",
+ "modified": "2026-02-03 20:33:57.538851",
  "modified_by": "kevin@avu.nu",
  "module": "Payment Gateways",
  "name": "GoCardless Mandate",
