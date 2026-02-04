@@ -14,6 +14,7 @@ class GoCardlessMandate(Document):
 	if TYPE_CHECKING:
 		from frappe.types import DF
 
+		customer: DF.Link | None
 		disabled: DF.Check
 		gocardless_customer: DF.Data
 		mandate: DF.Data
