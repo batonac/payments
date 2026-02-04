@@ -26,10 +26,12 @@ class PaymobSettings(Document):
 		from frappe.types import DF
 
 		api_key: DF.Password
+		expires_in: DF.Datetime | None
 		hmac: DF.Password
 		iframe: DF.Data
 		payment_integration: DF.Int
 		public_key: DF.Password
+		redirect_to: DF.Data | None
 		secret_key: DF.Password
 		token: DF.Password | None
 	# end: auto-generated types

@@ -24,6 +24,21 @@ from payments.utils import create_payment_gateway
 
 
 class PaytmSettings(Document):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		industry_type_id: DF.Data | None
+		merchant_id: DF.Data
+		merchant_key: DF.Password
+		staging: DF.Check
+		website: DF.Data | None
+	# end: auto-generated types
+
 	supported_currencies = ("INR",)
 
 	def validate(self):

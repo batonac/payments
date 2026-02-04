@@ -79,6 +79,21 @@ api_path = "/api/method/payments.payment_gateways.doctype.paypal_settings.paypal
 
 
 class PayPalSettings(Document):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		api_password: DF.Password
+		api_username: DF.Data
+		paypal_sandbox: DF.Check
+		redirect_to: DF.Data | None
+		signature: DF.Data
+	# end: auto-generated types
+
 	supported_currencies = (
 		"AUD",
 		"BRL",
