@@ -12,7 +12,7 @@ def create_stripe_subscription(gateway_controller, data):
 	stripe_settings.data = frappe._dict(data)
 
 	stripe.api_key = stripe_settings.get_password(fieldname="secret_key", raise_exception=False)
-	stripe.default_http_client = stripe.http_client.RequestsClient()
+	stripe.default_http_client = stripe.RequestsClient()
 
 	try:
 		stripe_settings.integration_request = create_request_log(stripe_settings.data, "Host", "Stripe")

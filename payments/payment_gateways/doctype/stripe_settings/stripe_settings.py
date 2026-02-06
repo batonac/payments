@@ -213,7 +213,7 @@ class StripeSettings(Document):
 
 		self.data = frappe._dict(data)
 		stripe.api_key = self.get_password(fieldname="secret_key", raise_exception=False)
-		stripe.default_http_client = stripe.http_client.RequestsClient()
+		stripe.default_http_client = stripe.RequestsClient()
 
 		try:
 			self.integration_request = create_request_log(self.data, service_name="Stripe")
