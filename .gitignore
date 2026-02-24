@@ -4,7 +4,7 @@
 *.swp
 tags
 payments/docs/current
-node_modules/
+node_modules
 __pycache__/
 .aider*
 .helix
