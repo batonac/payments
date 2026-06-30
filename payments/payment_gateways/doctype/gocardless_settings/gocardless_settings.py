@@ -278,7 +278,7 @@ class GoCardlessSettings(Document):
 			self.doctype,
 			self.name,
 			"run_fetch_history",
-			queue="long",
+			queue="default",
 			timeout=3600,
 			job_id=job_id,
 			days=days,

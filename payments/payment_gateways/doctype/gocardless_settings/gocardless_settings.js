@@ -42,6 +42,7 @@ frappe.ui.form.on("GoCardless Settings", {
             frm
               .call({
                 method: "fetch_history",
+                doc: frm.doc,
                 args: { days: values.days },
                 freeze: true,
                 freeze_message: __("Starting…"),
