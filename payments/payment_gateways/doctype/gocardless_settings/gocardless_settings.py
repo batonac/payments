@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 
+from datetime import datetime, timedelta
 from urllib.parse import urlencode
 
 import frappe
@@ -10,6 +11,8 @@ from frappe import _
 from frappe.integrations.utils import create_request_log
 from frappe.model.document import Document
 from frappe.utils import call_hook_method, cint, flt, get_url
+from frappe.utils.background_jobs import is_job_enqueued
+from frappe.utils.scheduler import is_scheduler_inactive
 
 
 class GoCardlessSettings(Document):
@@ -247,6 +250,110 @@ class GoCardlessSettings(Document):
 			redirect_url = get_url(redirect_url)
 
 		return {"redirect_to": redirect_url, "status": status}
+
+	@frappe.whitelist()
+	def fetch_history(self, days):
+		"""Enqueue a background replay of GoCardless events from the last ``days`` days.
+
+		Each event is run through the same handlers that process live webhooks, so the
+		fetch produces the same documents (Payment Entries, payout Journal Entries,
+		mandate status updates) that healthy webhook delivery would have created.
+		"""
+		days = cint(days)
+		if days <= 0:
+			frappe.throw(_("Please enter a positive number of days."))
+
+		job_id = f"gocardless_fetch_history::{self.name}"
+		if is_job_enqueued(job_id):
+			frappe.throw(_("A history fetch is already running for {0}.").format(self.name))
+
+		run_now = bool(frappe.conf.developer_mode or frappe.in_test)
+		if is_scheduler_inactive() and not run_now:
+			frappe.throw(
+				_("Scheduler is inactive. Please enable it to fetch GoCardless history."),
+				title=_("Scheduler Inactive"),
+			)
+
+		frappe.enqueue_doc(
+			self.doctype,
+			self.name,
+			"run_fetch_history",
+			queue="long",
+			timeout=3600,
+			job_id=job_id,
+			days=days,
+			user=frappe.session.user,
+			now=run_now,
+		)
+		return {"enqueued": True, "days": days}
+
+	def run_fetch_history(self, days, user=None):
+		"""Worker entry point: fetch events for the window and replay each one.
+
+		Not whitelisted -- only reachable via the background job enqueued by
+		:meth:`fetch_history`.
+		"""
+		from payments.payment_gateways.doctype.gocardless_settings import set_status
+
+		self.initialize_client()
+
+		since = (datetime.utcnow() - timedelta(days=cint(days))).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+		events = list(self.client.events.all(params={"created_at[gt]": since, "limit": 500}))
+
+		# The API returns events newest-first; replay oldest-first so status
+		# transitions land in the same order they would have via webhooks.
+		events.sort(key=lambda event: event.attributes.get("created_at") or "")
+
+		total = len(events)
+		for index, event in enumerate(events, 1):
+			attributes = event.attributes
+			self._ensure_resource_metadata(attributes)
+			try:
+				set_status(attributes)
+			except Exception:
+				frappe.log_error(
+					f"GoCardless Fetch History event error ({attributes.get('id')})",
+					frappe.get_traceback(),
+				)
+			frappe.db.commit()
+
+			if index % 10 == 0 or index == total:
+				frappe.publish_realtime(
+					"gocardless_fetch_history_progress",
+					{"docname": self.name, "current": index, "total": total},
+					user=user,
+				)
+
+		frappe.publish_realtime(
+			"gocardless_fetch_history_done",
+			{"docname": self.name, "total": total},
+			user=user,
+		)
+
+	def _ensure_resource_metadata(self, event_attributes):
+		"""Populate ``resource_metadata`` for payment events when the list API omits it.
+
+		Webhook payloads carry ``resource_metadata`` (the resource's metadata), which
+		:func:`set_payment_request_status` uses to map a payment back to its Payment
+		Request. The events-list API may not include it, so backfill it from the
+		payment's own metadata (set as ``reference_doctype``/``reference_document`` in
+		:meth:`create_charge_on_gocardless`).
+		"""
+		if event_attributes.get("resource_metadata"):
+			return
+		if event_attributes.get("resource_type") != "payments":
+			return
+		payment_id = (event_attributes.get("links") or {}).get("payment")
+		if not payment_id:
+			return
+		try:
+			payment = self.client.payments.get(payment_id)
+			event_attributes["resource_metadata"] = payment.metadata or {}
+		except Exception:
+			frappe.log_error(
+				f"GoCardless Fetch History metadata lookup failed ({payment_id})",
+				frappe.get_traceback(),
+			)
 
 
 def get_gateway_controller(doc):
