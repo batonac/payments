@@ -5,10 +5,13 @@
 import hashlib
 import hmac
 import json
+from typing import cast
 
 import frappe
 from dateutil import parser
+from erpnext.accounts.doctype.payment_request.payment_request import PaymentRequest
 from frappe.integrations.doctype.webhook.webhook import log_request
+from frappe.utils import flt
 
 
 @frappe.whitelist(allow_guest=True)
@@ -92,7 +95,7 @@ def set_payment_request_status(event):
 	payment_request = event.get("resource_metadata", {}).get("reference_document")
 	if not payment_request:
 		return
-	doc = frappe.get_doc("Payment Request", payment_request)
+	doc = cast(PaymentRequest, frappe.get_doc("Payment Request", payment_request))
 	if comment:
 		doc.add_comment("Info", text=comment, comment_by="GoCardless", comment_email=comment_email).db_set(
 			"subject", event_action
@@ -101,7 +104,12 @@ def set_payment_request_status(event):
 	if event_action == "submitted" and doc.status != "Initiated":
 		doc.db_set("status", "Initiated")
 	elif event_action in ["confirmed", "paid_out"] and doc.status != "Paid":
-		# check if payment entry exists
+		# The request may already be settled: by a Payment Entry created here
+		# previously (reference_no == doc.name), or by one allocated to its reference
+		# document elsewhere -- which drives outstanding_amount to 0. In either case
+		# there is nothing left to pay; calling set_as_paid() would build a
+		# zero-amount Payment Entry and fail with "Paid Amount is mandatory". So just
+		# reflect the Paid status instead of creating an entry.
 		payment_entry_exists = frappe.db.exists(
 			"Payment Entry",
 			{
@@ -109,7 +117,9 @@ def set_payment_request_status(event):
 				"docstatus": 1,
 			},
 		)
-		if not payment_entry_exists:
+		if payment_entry_exists or flt(doc.outstanding_amount) <= 0:
+			doc.db_set("status", "Paid")
+		else:
 			# create payment entry
 			try:
 				# set session user to system user to avoid permission issues
@@ -119,7 +129,7 @@ def set_payment_request_status(event):
 			except Exception as e:
 				frappe.log_error(
 					f"GoCardless Payment Request {doc.name} set_as_paid error",
-					str(e),
+					{"error": str(e), "event": event},
 				)
 	elif event_action == "cancelled" and doc.status != "Cancelled":
 		doc.set_as_cancelled()
