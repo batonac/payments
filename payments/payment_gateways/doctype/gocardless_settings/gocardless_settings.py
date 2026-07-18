@@ -265,7 +265,15 @@ class GoCardlessSettings(Document):
 
 		self.initialize_client()
 		for mandate_name in mandate_names:
-			mandate = self.client.mandates.get(mandate_name)
+			try:
+				mandate = self.client.mandates.get(mandate_name)
+			except gocardless_pro.errors.GoCardlessProError as e:
+				# e.g. "Resource not found": the mandate does not exist on this
+				# GoCardless account (stale/imported reference) — treat as
+				# invalid and fall through to the next mandate
+				frappe.logger("gocardless").warning(f"Mandate {mandate_name} lookup failed ({e}); disabling")
+				frappe.db.set_value("GoCardless Mandate", {"mandate": mandate_name}, "disabled", 1)
+				continue
 			if mandate.status in invalid_statuses:
 				frappe.db.set_value("GoCardless Mandate", {"mandate": mandate_name}, "disabled", 1)
 				continue
