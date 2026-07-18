@@ -11,6 +11,8 @@
   "access_token",
   "webhooks_secret",
   "fees_account",
+  "maximum_charge_amount",
+  "alert_recipients",
   "use_sandbox",
   "header_img"
  ],
@@ -55,10 +57,22 @@
    "fieldtype": "Link",
    "label": "Fees Account",
    "options": "Account"
+  },
+  {
+   "description": "Per-transaction cap for this GoCardless account. Charges above this amount are automatically split into multiple payments of at most this size against the same mandate. Leave empty for no splitting.",
+   "fieldname": "maximum_charge_amount",
+   "fieldtype": "Currency",
+   "label": "Maximum Charge Amount"
+  },
+  {
+   "description": "Comma-separated email addresses notified when an automatic mandate charge fails.",
+   "fieldname": "alert_recipients",
+   "fieldtype": "Small Text",
+   "label": "Charge Failure Alert Recipients"
   }
  ],
  "links": [],
- "modified": "2024-05-20 15:18:37.775284",
+ "modified": "2026-07-18 14:30:00.000000",
  "modified_by": "Administrator",
  "module": "Payment Gateways",
  "name": "GoCardless Settings",

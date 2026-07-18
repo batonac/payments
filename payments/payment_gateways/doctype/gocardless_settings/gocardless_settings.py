@@ -25,9 +25,11 @@ class GoCardlessSettings(Document):
 		from frappe.types import DF
 
 		access_token: DF.Data
+		alert_recipients: DF.SmallText | None
 		fees_account: DF.Link | None
 		gateway_name: DF.Data
 		header_img: DF.AttachImage | None
+		maximum_charge_amount: DF.Currency
 		use_sandbox: DF.Check
 		webhooks_secret: DF.Data | None
 	# end: auto-generated types
@@ -55,80 +57,221 @@ class GoCardlessSettings(Document):
 		)
 		call_hook_method("payment_gateway_enabled", gateway="GoCardless-" + self.gateway_name)
 
-	def on_payment_request_submission(self, data):
-		if data.reference_doctype != "Fees":
-			customer_data = frappe.db.get_value(
-				data.reference_doctype,
-				data.reference_name,
-				["company", "customer_name"],
-				as_dict=1,
+	def on_payment_request_submission(self, payment_request):
+		"""Attempt a direct-debit charge against the customer's mandate.
+
+		Contract with erpnext's PaymentRequest.payment_gateway_validation:
+		return False when the gateway handled payment (charge(s) created, no
+		payment URL needed), True when the customer must act via the payment
+		link (no valid mandate, or no charge could be created).
+
+		Never raises: erpnext swallows exceptions from this hook silently
+		(payment_request.py, payment_gateway_validation's bare except), which
+		historically hid every failure — e.g. a TypeError from a string
+		transaction_date suppressed the entire e-Billing auto-charge flow.
+		Failures are logged and alerted here instead.
+
+		The outcome is cached on the document's flags: the erpnext submit path
+		(before_submit -> set_payment_request_url) re-invokes this hook on the
+		same in-memory document after callers have already validated a draft,
+		which used to create a second Integration Request + charge attempt per
+		Payment Request (deduplicated only by the GoCardless Idempotency-Key).
+		"""
+		if payment_request.flags.get("gocardless_charge_attempted"):
+			return payment_request.flags.get("gocardless_charge_result", True)
+
+		try:
+			result = self._initiate_mandate_charge(payment_request)
+		except Exception:
+			frappe.log_error("GoCardless auto-charge failed", frappe.get_traceback())
+			self.notify_charge_failure(
+				payment_request,
+				"Automatic GoCardless charge failed with an unexpected error; "
+				"see Error Log. The payment-link email flow applies instead.",
+			)
+			result = True
+
+		payment_request.flags.gocardless_charge_attempted = True
+		payment_request.flags.gocardless_charge_result = result
+		return result
+
+	def _initiate_mandate_charge(self, payment_request) -> bool:
+		logger = frappe.logger("gocardless")
+
+		customer_data = frappe._dict()
+		if payment_request.reference_doctype != "Fees":
+			customer_data = (
+				frappe.db.get_value(
+					payment_request.reference_doctype,
+					payment_request.reference_name,
+					["company", "customer_name"],
+					as_dict=1,
+				)
+				or frappe._dict()
 			)
 
+		amount = flt(payment_request.grand_total, payment_request.precision("grand_total"))
+		# getdate() coercion: desk-submitted documents carry string dates, and
+		# max(str, date) below raises TypeError otherwise
+		charge_date = (
+			frappe.utils.getdate(payment_request.transaction_date)
+			if payment_request.get("transaction_date")
+			else frappe.utils.getdate()
+		)
+
 		data = {
-			"amount": flt(data.grand_total, data.precision("grand_total")),
-			"title": customer_data.company.encode("utf-8"),
-			"description": data.subject.encode("utf-8"),
-			"reference_doctype": data.doctype,
-			"reference_docname": data.name,
-			"payer_email": data.email_to or frappe.session.user,
+			"amount": amount,
+			"title": customer_data.company,
+			"description": payment_request.subject,
+			"reference_doctype": payment_request.doctype,
+			"reference_docname": payment_request.name,
+			"payer_email": payment_request.email_to or frappe.session.user,
 			"payer_name": customer_data.customer_name,
-			"order_id": data.name,
-			"currency": data.currency,
-			"charge_date": data.transaction_date or frappe.utils.getdate(),
+			"order_id": payment_request.name,
+			"currency": payment_request.currency,
+			"charge_date": charge_date,
 		}
 
 		valid_mandate, next_possible_charge_date = self.check_mandate_validity(data)
-		if valid_mandate is not None:
-			data.update(valid_mandate)
-			data["charge_date"] = str(
-				max(
-					data.get("charge_date"),
-					frappe.utils.getdate(next_possible_charge_date),
-				)
-			)
-			print("on_payment_request_submission", data)
-			try:
-				self.create_payment_request(data)
-				print("create_payment_request completed successfully")
-			except Exception as e:
-				print("create_payment_request failed", str(e))
-				raise  # Re-raise to see the full traceback
-			return False
-		else:
-			print("No valid mandate found for customer", data.get("payer_name"))
+		if valid_mandate is None:
+			logger.info(f"No valid mandate for {data.get('payer_name')}; using payment-link flow")
 			return True
 
-	def check_mandate_validity(self, data):
-		if frappe.db.exists("GoCardless Mandate", dict(customer=data.get("payer_name"), disabled=0)):
-			registered_mandate = frappe.db.get_value(
-				"GoCardless Mandate",
-				dict(customer=data.get("payer_name"), disabled=0),
-				"mandate",
-			)
-			self.initialize_client()
-			mandate = self.client.mandates.get(registered_mandate)
+		data.update(valid_mandate)
+		data["charge_date"] = str(max(charge_date, frappe.utils.getdate(next_possible_charge_date)))
 
-			invalid_statuses = [
-				"blocked",
-				"cancelled",
-				"consumed",
-				"expired",
-				"failed",
-				"suspended_by_payer",
-			]
+		# Cross-request idempotency: a charge for this Payment Request is already
+		# queued or through ("Failed" deliberately excluded so Re-Initiate Charge
+		# can retry after a failure).
+		if frappe.db.exists(
+			"Integration Request",
+			{
+				"integration_request_service": "GoCardless",
+				"reference_doctype": "Payment Request",
+				"reference_docname": payment_request.name,
+				"status": ("in", ("Queued", "Authorized", "Completed")),
+			},
+		):
+			logger.info(f"Charge already initiated for {payment_request.name}; skipping")
+			return False
 
-			if mandate.status in invalid_statuses:
-				frappe.db.set_value(
-					"GoCardless Mandate",
-					dict(customer=data.get("payer_name"), disabled=0),
-					"disabled",
-					1,
-				)
-				return None, None
+		parts = self.get_charge_parts(amount)
+		succeeded, failed = [], []
+		for index, part_amount in enumerate(parts, start=1):
+			part = dict(data)
+			part["amount"] = part_amount
+			if len(parts) > 1:
+				part["idempotency_key"] = f"{payment_request.name}:{index}"
+				part["description"] = f"{payment_request.subject} ({index} of {len(parts)})"
+				part["part"] = f"{index}/{len(parts)}"
 			else:
-				return {"mandate": registered_mandate}, mandate.next_possible_charge_date
-		else:
+				part["idempotency_key"] = payment_request.name
+
+			outcome = self.create_payment_request(part) or {}
+			(succeeded if outcome.get("status") == "Completed" else failed).append((index, part_amount))
+
+		if len(parts) > 1:
+			payment_request.add_comment(
+				"Info",
+				text=(
+					f"GoCardless charge split into {len(parts)} payments of at most "
+					f"{flt(self.get('maximum_charge_amount'))} ({payment_request.currency}) "
+					f"due to the per-transaction cap. "
+					f"Created: {len(succeeded)}, failed: {len(failed)}."
+				),
+			)
+
+		if failed:
+			self.notify_charge_failure(
+				payment_request,
+				f"GoCardless charge failed for part(s) {[i for i, _ in failed]} "
+				f"of {len(parts)} (amounts: {[a for _, a in failed]}). "
+				"See the linked Integration Requests / Error Log; use Re-Initiate "
+				"Charge after resolving.",
+			)
+
+		# If anything was charged, the gateway is handling (part of) the payment:
+		# suppress the payment-link flow to avoid double collection and let the
+		# failure alert drive manual follow-up for the remainder. Only when
+		# nothing was charged fall back to the payment link.
+		return not succeeded
+
+	def get_charge_parts(self, amount: float) -> list[float]:
+		"""Split an amount into per-transaction-cap-sized parts (auto-split)."""
+		cap = flt(self.get("maximum_charge_amount"))
+		amount = flt(amount)
+		if not cap or amount <= cap:
+			return [amount] if amount else []
+
+		parts = []
+		remaining = amount
+		while remaining > cap:
+			parts.append(cap)
+			remaining = flt(remaining - cap, 2)
+		if remaining > 0:
+			parts.append(remaining)
+		return parts
+
+	def notify_charge_failure(self, payment_request, message: str):
+		try:
+			payment_request.add_comment("Info", text=message)
+		except Exception:
+			frappe.log_error("GoCardless: failed to add failure comment", frappe.get_traceback())
+
+		recipients = [
+			address.strip() for address in (self.get("alert_recipients") or "").split(",") if address.strip()
+		]
+		if not recipients:
+			return
+		try:
+			frappe.sendmail(
+				recipients=recipients,
+				subject=f"GoCardless auto-charge issue: {payment_request.name}",
+				message=(
+					f"{message}<br><br>Payment Request: {payment_request.name}<br>"
+					f"Reference: {payment_request.reference_doctype} "
+					f"{payment_request.reference_name}<br>"
+					f"Amount: {payment_request.grand_total} {payment_request.currency}"
+				),
+			)
+		except Exception:
+			frappe.log_error("GoCardless: failed to send failure alert", frappe.get_traceback())
+
+	def check_mandate_validity(self, data):
+		"""Return ({"mandate": id}, next_possible_charge_date) for the newest
+		valid enabled mandate of the customer, or (None, None).
+
+		Iterates newest-first and disables only the specific mandates the API
+		reports as invalid (the previous dict-filter set_value disabled ALL of
+		the customer's enabled mandates at once).
+		"""
+		mandate_names = frappe.get_all(
+			"GoCardless Mandate",
+			filters={"customer": data.get("payer_name"), "disabled": 0},
+			order_by="creation desc",
+			pluck="mandate",
+		)
+		if not mandate_names:
 			return None, None
+
+		invalid_statuses = [
+			"blocked",
+			"cancelled",
+			"consumed",
+			"expired",
+			"failed",
+			"suspended_by_payer",
+		]
+
+		self.initialize_client()
+		for mandate_name in mandate_names:
+			mandate = self.client.mandates.get(mandate_name)
+			if mandate.status in invalid_statuses:
+				frappe.db.set_value("GoCardless Mandate", {"mandate": mandate_name}, "disabled", 1)
+				continue
+			return {"mandate": mandate_name}, mandate.next_possible_charge_date
+
+		return None, None
 
 	def get_environment(self):
 		if self.use_sandbox:
@@ -176,26 +319,40 @@ class GoCardlessSettings(Document):
 			}
 
 	def create_charge_on_gocardless(self):
+		# reset per-charge outcome state: the same settings doc handles multiple
+		# split parts in one request, and a stale "Completed" from an earlier
+		# part would mask a later part's failure
+		self.flags.status_changed_to = None
+
 		redirect_to = self.data.get("redirect_to") or None
 		redirect_message = self.data.get("redirect_message") or None
 
 		reference_doc = frappe.get_doc(self.data.get("reference_doctype"), self.data.get("reference_docname"))
 		self.initialize_client()
 
+		# round() before cint(): bare cint(x * 100) truncates float error
+		# (105.86 * 100 = 10585.999... -> 10585, one cent short)
+		charge_amount = flt(self.data.get("amount") or reference_doc.grand_total)
+		metadata = {
+			"reference_doctype": reference_doc.doctype,
+			"reference_document": reference_doc.name,
+		}
+		if self.data.get("amount"):
+			# lets the webhook create a per-payment Payment Entry for exactly
+			# this amount (required for cap-split charges)
+			metadata["part_amount"] = str(charge_amount)
+
 		try:
 			payment = self.client.payments.create(
 				params={
-					"amount": cint(reference_doc.grand_total * 100),
+					"amount": cint(round(charge_amount * 100)),
 					"charge_date": self.data.get("charge_date"),
 					"currency": reference_doc.currency,
 					"links": {"mandate": self.data.get("mandate")},
-					"metadata": {
-						"reference_doctype": reference_doc.doctype,
-						"reference_document": reference_doc.name,
-					},
+					"metadata": metadata,
 				},
 				headers={
-					"Idempotency-Key": self.data.get("reference_docname"),
+					"Idempotency-Key": self.data.get("idempotency_key") or self.data.get("reference_docname"),
 				},
 			)
 
@@ -221,6 +378,9 @@ class GoCardlessSettings(Document):
 					self.integration_request.db_set("error", payment.status, update_modified=False)
 
 		except Exception as e:
+			# status must leave "Queued", or failed charges look forever in-flight
+			# (and block the cross-request idempotency guard from retrying)
+			self.integration_request.db_set("status", "Failed", update_modified=False)
 			self.integration_request.db_set("error", str(e))
 			frappe.log_error("GoCardless Payment Error", str(e))
 
