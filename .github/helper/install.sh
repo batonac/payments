@@ -8,6 +8,10 @@ sudo apt update
 sudo apt remove mysql-server mysql-client
 sudo apt install libcups2-dev redis-server mariadb-client
 
+# The current mariadb client demands TLS, which the mariadb:10.6 service container
+# does not offer. Frappe runs the client too, so set it for every invocation.
+printf '[client]\nskip-ssl\n' > ~/.my.cnf
+
 pip install frappe-bench
 
 githubbranch=${GITHUB_BASE_REF:-${GITHUB_REF##*/}}
@@ -21,14 +25,14 @@ bench init --skip-assets --frappe-path ~/frappe --python "$(which python)" frapp
 mkdir ~/frappe-bench/sites/test_site
 cp -r "${GITHUB_WORKSPACE}/.github/helper/site_config.json" ~/frappe-bench/sites/test_site/
 
-mariadb --skip-ssl --host 127.0.0.1 --port 3306 -u root -proot -e "SET GLOBAL character_set_server = 'utf8mb4'"
-mariadb --skip-ssl --host 127.0.0.1 --port 3306 -u root -proot -e "SET GLOBAL collation_server = 'utf8mb4_unicode_ci'"
+mariadb --host 127.0.0.1 --port 3306 -u root -proot -e "SET GLOBAL character_set_server = 'utf8mb4'"
+mariadb --host 127.0.0.1 --port 3306 -u root -proot -e "SET GLOBAL collation_server = 'utf8mb4_unicode_ci'"
 
-mariadb --skip-ssl --host 127.0.0.1 --port 3306 -u root -proot -e "CREATE USER 'test_frappe'@'localhost' IDENTIFIED BY 'test_frappe'"
-mariadb --skip-ssl --host 127.0.0.1 --port 3306 -u root -proot -e "CREATE DATABASE test_frappe"
-mariadb --skip-ssl --host 127.0.0.1 --port 3306 -u root -proot -e "GRANT ALL PRIVILEGES ON \`test_frappe\`.* TO 'test_frappe'@'localhost'"
+mariadb --host 127.0.0.1 --port 3306 -u root -proot -e "CREATE USER 'test_frappe'@'localhost' IDENTIFIED BY 'test_frappe'"
+mariadb --host 127.0.0.1 --port 3306 -u root -proot -e "CREATE DATABASE test_frappe"
+mariadb --host 127.0.0.1 --port 3306 -u root -proot -e "GRANT ALL PRIVILEGES ON \`test_frappe\`.* TO 'test_frappe'@'localhost'"
 
-mariadb --skip-ssl --host 127.0.0.1 --port 3306 -u root -proot -e "FLUSH PRIVILEGES"
+mariadb --host 127.0.0.1 --port 3306 -u root -proot -e "FLUSH PRIVILEGES"
 
 install_whktml() {
     wget -O /tmp/wkhtmltox.tar.xz https://github.com/frappe/wkhtmltopdf/raw/master/wkhtmltox-0.12.3_linux-generic-amd64.tar.xz
