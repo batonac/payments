@@ -34,18 +34,15 @@ repos:
                 payments/templates/includes/.*
             )$
 
-  - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v10.0.2
+  # eslint.config.mjs imports eslint and its plugins, which resolve from the
+  # repository's node_modules, not from an environment pre-commit builds
+  - repo: local
     hooks:
       - id: eslint
+        name: eslint
+        entry: yarn --silent eslint --quiet
+        language: system
         types_or: [javascript]
-        args: ['--quiet']
-        additional_dependencies: 
-          - eslint
-          - jiti
-          - globals
-          - typescript
-          - typescript-eslint
         # Ignore any files that might contain jinja / bundles
         exclude: |
             (?x)^(
