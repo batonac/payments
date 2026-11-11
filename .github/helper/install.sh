@@ -8,6 +8,10 @@ sudo apt update
 sudo apt remove mysql-server mysql-client
 sudo apt install libcups2-dev redis-server mariadb-client
 
+# The current mariadb client demands TLS, which the mariadb:10.6 service container
+# does not offer. Frappe runs the client too, so set it for every invocation.
+printf '[client]\nskip-ssl\n' > ~/.my.cnf
+
 pip install frappe-bench
 
 githubbranch=${GITHUB_BASE_REF:-${GITHUB_REF##*/}}
